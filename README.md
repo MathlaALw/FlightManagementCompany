@@ -405,3 +405,30 @@ showing transformations from **First Normal Form (1NF)** to **Second Normal Form
 ### 3NF – Already in 3NF
 
 ---
+
+## 10. AircraftMaintenance Table
+
+### 1NF – Combined maintenance type and notes
+| MaintenanceID | MaintenanceDate | Type, Notes          | AircraftID |
+|---------------|-----------------|-----------------------|------------|
+| M001          | 2025-07-01      | Engine Check, Routine | A001       |
+| M002          | 2025-07-05      | Tires, Replacement    | A002       |
+
+---
+### 2NF – Separate type and notes
+| MaintenanceID | MaintenanceDate | Type        | Notes               | AircraftID |
+|---------------|-----------------|-------------|---------------------|------------|
+| M001          | 2025-07-01      | Engine Check| Routine engine check| A001       |
+| M002          | 2025-07-05      | Tires       | Tire replacement    | A002       |
+
+---
+### 3NF – Already in 3NF
+---
+
+# Flight Management System - schema diagram 
+
+![Flight Management System Schema](./Image/FMS-SchemaDiagram.png)
+
+
+----
+
