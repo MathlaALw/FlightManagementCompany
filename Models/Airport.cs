@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ namespace FlightManagementCompany.Models
     public class Airport
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int AirportID { get; set; }
 
         [Required]
@@ -26,5 +28,9 @@ namespace FlightManagementCompany.Models
 
         [Required]
         public string TimeZone { get; set; }
+
+        // navigation properties
+
+        public ICollection<Route> Routes { get; set; } 
     }
 }
