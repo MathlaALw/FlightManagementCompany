@@ -1,4 +1,4 @@
-# Flight Management System Summary
+﻿# Flight Management System Summary
 
 ## Flight Management System - ERD 
 
@@ -150,3 +150,44 @@
 **Purpose**  
 Resolves M:N relationship between **Flight** and **CrewMember**.
 
+# Participation Constraints - Flight Management System
+
+## Total Participation (1..1)
+These relationships require **mandatory participation** from the entity on one side:
+
+1. **Flight → Route**  
+   - Every Flight must belong to exactly one Route.
+
+2. **Flight → Aircraft**  
+   - Every Flight must be operated by exactly one Aircraft.
+
+3. **Ticket → Booking**  
+   - Every Ticket must belong to exactly one Booking.
+
+4. **Ticket → Flight**  
+   - Every Ticket must be for exactly one Flight.
+
+5. **Booking → Ticket**  
+   - Every Booking must contain at least one Ticket.
+
+---
+
+## Partial Participation (0..N)
+These relationships allow **optional participation** from the entity on one side:
+
+1. **Airport → Route**  
+   - An Airport may have no Routes.
+
+2. **Aircraft → Flight**  
+   - An Aircraft may have no Flights assigned.
+
+3. **Flight → FlightCrew**  
+   - A Flight may have no Crew assignments.
+
+4. **Passenger → Booking**  
+   - A Passenger may have no Bookings.
+
+5. **Ticket → Baggage**  
+   - A Ticket may have no Baggage.
+
+---
