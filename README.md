@@ -387,18 +387,18 @@ showing transformations from **First Normal Form (1NF)** to **Second Normal Form
 ## 9. Baggage Table
 
 ### 1NF – Combined baggage weight and tag
-| BaggageID | WeightKg, TagNumber | FlightID |
+| BaggageID | WeightKg, TagNumber | TicketID |
 |-----------|---------------------|----------|
-| BAG001    | 20, BG123           | F001     |
-| BAG002    | 18, BG124           | F002     |
+| BAG001    | 20, BG123           | T001     |
+| BAG002    | 18, BG124           | T002     |
 
 ---
 
 ### 2NF – Separate weight and tag number
-| BaggageID | WeightKg | TagNumber | FlightID |
+| BaggageID | WeightKg | TagNumber | TicketID |
 |-----------|----------|-----------|----------|
-| BAG001    | 20       | BG123     | F001     |
-| BAG002    | 18       | BG124     | F002     |
+| BAG001    | 20       | BG123     | T001     |
+| BAG002    | 18       | BG124     | T002     |
 
 ---
 
