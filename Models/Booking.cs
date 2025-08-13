@@ -28,5 +28,10 @@ namespace FlightManagementCompany.Models
         // one to many relationship with Ticket
         // One booking can have many tickets
         public ICollection<Ticket> Tickets { get; set; }
+
+        // one to many relationship with Passenger
+        // One booking can be associated with many passengers
+        public int PassengerId { get; set; }
+        public Passenger Passenger { get; set; }
     }
 }
