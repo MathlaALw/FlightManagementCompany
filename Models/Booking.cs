@@ -11,25 +11,19 @@ namespace FlightManagementCompany.Models
     public class Booking
     {
 
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        
         public int BookingId { get; set; }
 
-        [Required]
+        
         public string BookingRef { get; set; }
 
-        [Required]
+       
 
         public DateTime BookingDate { get; set; }
 
-        [Required]
+       
         public string Status { get; set; }
 
-        // Navigation properties
-
-        // one-to-many relationship with Passenger
-        [ForeignKey("Passenger")]
-        public int PassengerId { get; set; }
-        public Passenger Passenger { get; set; }
+        
     }
 }

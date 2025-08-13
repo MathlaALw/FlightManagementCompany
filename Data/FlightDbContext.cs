@@ -32,7 +32,19 @@ namespace FlightManagementCompany.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            
+
+            modelBuilder.Entity<FlightCrew>()
+                .HasKey(fc => new { fc.FlightId, fc.CrewMemberId });
+            modelBuilder.Entity<FlightCrew>()
+                .HasOne(fc => fc.Flight)
+                .WithMany(f => f.FlightCrews)
+                .HasForeignKey(fc => fc.FlightId);
+            modelBuilder.Entity<FlightCrew>()
+                .HasOne(fc => fc.CrewMember)
+                .WithMany(cm => cm.FlightCrews)
+                .HasForeignKey(fc => fc.CrewMemberId);
+            base.OnModelCreating(modelBuilder);
+
         }
     }
 }
