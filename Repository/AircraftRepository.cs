@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace FlightManagementCompany.Repository
 {
-    public class AircraftRepository
+    public class AircraftRepository : IAircraftRepository
     {
 
         private readonly FlightDbContext _context;
@@ -40,7 +40,7 @@ namespace FlightManagementCompany.Repository
 
         public IEnumerable<Aircraft> GetAll() => _context.Aircrafts.ToList();
 
-        
+
         // Get Aircraft Due For Maintenance
         public IEnumerable<Aircraft> GetDueForMaintenance(DateTime beforeDate) // Method to get aircraft due for maintenance before a specific date
         {
@@ -52,6 +52,6 @@ namespace FlightManagementCompany.Repository
         }
 
 
-    
+
     }
 }
