@@ -19,8 +19,10 @@ namespace FlightManagementCompany.Models
         public DateTime DepartureUtc { get; set; }
        
         public DateTime ArrivalUtc { get; set; }
-       
-        public string Status { get; set; }
+
+        // Enum for flight status -> // This can be used to track the status of the flight
+
+        public FlightStatus Status { get; set; }
 
 
 
@@ -42,6 +44,10 @@ namespace FlightManagementCompany.Models
         // One flight can be assigned to one route
         public int RouteId { get; set; }
         public Route Route { get; set; }
+
+        // Enum for flight status property
+        public FlightStatus FlightStatus { get; set; }
+
 
 
     }
