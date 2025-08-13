@@ -45,7 +45,17 @@ namespace FlightManagementCompany.Data
                 .Property(a => a.IATA)
                 .IsRequired()
                 .HasMaxLength(3)
-                .HasColumnType("char(3)"); // IATA code is 3 characters long
+                .HasColumnType("nvarchar(3)"); // string type with max length 3 for IATA code
+            // Unique constraint on IATA
+            modelBuilder.Entity<Airport>()
+                .HasIndex(a => a.IATA)
+                .IsUnique(); // Ensure IATA code is unique
+            // Name
+            modelBuilder.Entity<Airport>()
+                .Property(a => a.Name)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnType("nvarchar(100)"); // string type with max length 100
             // City
             modelBuilder.Entity<Airport>()
                 .Property(a => a.City)
@@ -135,13 +145,19 @@ namespace FlightManagementCompany.Data
                 .IsRequired()
                 .HasMaxLength(10)
                 .HasColumnType("nvarchar(10)"); // string type with max length 10
-
+            // Unique constraint on FlightNumber
+            modelBuilder.Entity<Flight>()
+                .HasIndex(f => f.FlightNumber)
+                .IsUnique(); // Ensure FlightNumber is unique
             // DepartureUtc is required
             modelBuilder.Entity<Flight>()
                 .Property(f => f.DepartureUtc)
                 .IsRequired()
                 .HasColumnType("datetime"); // DateTime type for DepartureUtc
-
+            // Unique constraint on DepartureUtc 
+            modelBuilder.Entity<Flight>()
+                .HasIndex(f => f.DepartureUtc)
+                .IsUnique(); // Ensure DepartureUtc is unique
             // ArrivalUtc is required
             modelBuilder.Entity<Flight>()
                 .Property(f => f.ArrivalUtc)
@@ -263,7 +279,10 @@ namespace FlightManagementCompany.Data
                 .IsRequired()
                 .HasMaxLength(10)
                 .HasColumnType("nvarchar(10)"); // string type with max length 10
-
+            // Unique constraint on TailNumber
+            modelBuilder.Entity<Aircraft>()
+                .HasIndex(a => a.TailNumber)
+                .IsUnique(); // Ensure TailNumber is unique
             // Model is required
             modelBuilder.Entity<Aircraft>()
                 .Property(a => a.Model)
@@ -360,7 +379,10 @@ namespace FlightManagementCompany.Data
                 .IsRequired()
                 .HasMaxLength(20)
                 .HasColumnType("nvarchar(20)"); // string type with max length 20
-
+            // Unique constraint on PassportNo
+            modelBuilder.Entity<Passenger>()
+                .HasIndex(p => p.PassportNo)
+                .IsUnique(); // Ensure PassportNo is unique
             // Nationality is required
             modelBuilder.Entity<Passenger>()
                 .Property(p => p.Nationality)
@@ -403,7 +425,10 @@ namespace FlightManagementCompany.Data
                 .IsRequired()
                 .HasMaxLength(20)
                 .HasColumnType("nvarchar(20)"); // string type with max length 20
-
+            // Unique constraint on BookingRef
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.BookingRef)
+                .IsUnique(); // Ensure BookingRef is unique
             // BookingDate is required
             modelBuilder.Entity<Booking>()
                 .Property(b => b.BookingDate)
@@ -462,7 +487,7 @@ namespace FlightManagementCompany.Data
             // LicenseNo is required
             modelBuilder.Entity<CrewMember>()
                 .Property(cm => cm.LicenseNo)
-                .IsRequired()
+                .IsRequired(false) // LicenseNo is optional/nullable
                 .HasMaxLength(20)
                 .HasColumnType("nvarchar(20)"); // string type with max length 20
 
@@ -501,6 +526,42 @@ namespace FlightManagementCompany.Data
                 .IsRequired()
                 .HasMaxLength(50)
                 .HasColumnType("nvarchar(50)"); // string type with max length 50
+
+            //----------------
+
+            // Baggage Entity Configuration
+            // BaggageId Primary Key
+            modelBuilder.Entity<Baggage>()
+                .HasKey(b => b.BaggageId);
+            // BaggageId auto-increment
+            modelBuilder.Entity<Baggage>()
+                .Property(b => b.BaggageId)
+                .ValueGeneratedOnAdd() // Auto-increment primary key
+                .HasColumnType("int"); // int type for BaggageId
+
+            // WeightKg is required
+            modelBuilder.Entity<Baggage>()
+                .Property(b => b.WeightKg)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)"); // decimal type for Weight with precision 18 and scale 2
+
+            // TagNumber is required
+            modelBuilder.Entity<Baggage>()
+                .Property(b => b.TagNumber)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasColumnType("nvarchar(20)"); // string type with max length 20
+
+            // Navigation properties
+            // one to many relationship with Ticket
+            // One baggage item is associated with one ticket
+            modelBuilder.Entity<Baggage>()
+                .HasOne(b => b.Ticket) // one Ticket
+                .WithMany(t => t.Baggages) // many Baggages in Ticket
+                .HasForeignKey(b => b.TicketId) // Foreign key in Baggage
+                .OnDelete(DeleteBehavior.NoAction); // No action on delete to prevent cascading deletes
+
+
 
 
         }
