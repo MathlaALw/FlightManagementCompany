@@ -11,7 +11,7 @@ namespace FlightManagementCompany.Models
     public class Passenger
     {
        
-        public int BookingId { get; set; }
+        public int PassengerId { get; set; }
 
        
         public string FullName { get; set; }

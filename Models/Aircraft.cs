@@ -29,7 +29,7 @@ namespace FlightManagementCompany.Models
 
         // one to many relationship with AircraftMaintenance
         // One aircraft can have many maintenance records
-        public ICollection<AircraftMaintenance> MaintenanceRecords { get; set; }
+        public ICollection<AircraftMaintenance> AircraftMaintenances { get; set; }
     
     
     }
