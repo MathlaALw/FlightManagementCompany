@@ -45,9 +45,6 @@ namespace FlightManagementCompany.Models
         public int RouteId { get; set; }
         public Route Route { get; set; }
 
-        // Enum for flight status property
-        public FlightStatus FlightStatus { get; set; }
-
 
 
     }
