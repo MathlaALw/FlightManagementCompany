@@ -22,7 +22,7 @@ namespace FlightManagementCompany.Models
         public DateTime BookingDate { get; set; }
 
        
-        public string Status { get; set; }
+        public BookingStatus Status { get; set; }
 
         // Navigation property
         // one to many relationship with Ticket
