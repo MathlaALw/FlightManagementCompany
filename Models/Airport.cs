@@ -15,6 +15,8 @@ namespace FlightManagementCompany.Models
 
         public string IATA { get; set; }
 
+        public string Name { get; set; }
+
         public string City { get; set; }
 
         
