@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace FlightManagementCompany.Repository
 {
-    public class AircraftMaintenanceRepository
+    public class AircraftMaintenanceRepository : IAircraftMaintenanceRepository
     {
 
         private readonly FlightDbContext _context;
@@ -33,11 +33,11 @@ namespace FlightManagementCompany.Repository
             _context.SaveChanges();
         }
 
-        public AircraftMaintenance GetById(int id)=>_context.AircraftMaintenances.Find(id);
-        
+        public AircraftMaintenance GetById(int id) => _context.AircraftMaintenances.Find(id);
+
 
         public IEnumerable<AircraftMaintenance> GetAll() => _context.AircraftMaintenances.ToList();
-        
+
 
 
     }
