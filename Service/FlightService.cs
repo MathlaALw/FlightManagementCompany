@@ -1,4 +1,6 @@
-﻿using FlightManagementCompany.Models;
+﻿using FlightManagementCompany.Data;
+using FlightManagementCompany.Models;
+using FlightManagementCompany.Repository;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -6,11 +8,30 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlightManagementCompany.Data
+namespace FlightManagementCompany.Service
 {
-    public static class SeedData
+    public class FlightService
     {
-        public static void Seed(ModelBuilder modelBuilder)
+        // Connecting the FlightService to the FlightRepository
+        private readonly IFlightRepository _flightRepository;
+        private readonly IAircraftMaintenanceRepository _aircraftMaintenanceRepository;
+        private readonly IAircraftRepository _aircraftRepository;
+        private readonly IAirportRepository _airportRepository;
+        private readonly ICrewMemberRepository _crewMemberRepository;
+        private readonly IPassengerRepository _passengerRepository;
+        private readonly IRouteRepository _routeRepository;
+        private readonly IBookingRepository _bookingRepository;
+        private readonly IBaggageRepository _baggageRepository;
+        private readonly ITicketRepository _ticketRepository;
+        
+        public FlightService(FlightDbContext context) // Constructor injection for dependency
+        {
+            _flightRepository = new FlightRepository(context); // Initialize the repository with the context
+          
+        }
+
+        // Create sample data
+        public void CreateSampleData()
         {
             //// Airports (10)
             //modelBuilder.Entity<Airport>().HasData(
@@ -160,8 +181,8 @@ namespace FlightManagementCompany.Data
             //// Passengers (50)
 
             //modelBuilder.Entity<Passenger>().HasData(
-            //    new Passenger { FullName = "Salim Alsalami", PassportNo = "111111" , Nationality = "112211", DOB = new DateTime(1990, 1, 1) },
-            //    new Passenger { FullName = "Ali Alsinani" , PassportNo = "222222" , Nationality = "223322", DOB = new DateTime(1992, 2, 2) },
+            //    new Passenger { FullName = "Salim Alsalami", PassportNo = "111111", Nationality = "112211", DOB = new DateTime(1990, 1, 1) },
+            //    new Passenger { FullName = "Ali Alsinani", PassportNo = "222222", Nationality = "223322", DOB = new DateTime(1992, 2, 2) },
             //    new Passenger { FullName = "Salim Alsalami", PassportNo = "111111", Nationality = "Omani", DOB = new DateTime(1990, 1, 1) },
             //    new Passenger { FullName = "Ali Alsinani", PassportNo = "222222", Nationality = "Omani", DOB = new DateTime(1992, 2, 2) },
             //    new Passenger { FullName = "Fatima Alhabsi", PassportNo = "333333", Nationality = "Omani", DOB = new DateTime(1995, 3, 3) },
@@ -215,7 +236,7 @@ namespace FlightManagementCompany.Data
 
             //// Bookings (10)
             //modelBuilder.Entity<Booking>().HasData(
-            //    new Booking { BookingId = 1,BookingRef = "BK0001", BookingDate = new DateTime(2025, 8, 20),  Status = BookingStatus.Confirmed, PassengerId = 1 },
+            //    new Booking { BookingId = 1, BookingRef = "BK0001", BookingDate = new DateTime(2025, 8, 20), Status = BookingStatus.Confirmed, PassengerId = 1 },
             //    new Booking { BookingId = 2, BookingRef = "BK0002", BookingDate = new DateTime(2025, 8, 21), Status = BookingStatus.Cancelled, PassengerId = 2 },
             //    new Booking { BookingId = 3, BookingRef = "BK0003", BookingDate = new DateTime(2025, 8, 22), Status = BookingStatus.Confirmed, PassengerId = 3 },
             //    new Booking { BookingId = 4, BookingRef = "BK0004", BookingDate = new DateTime(2025, 8, 23), Status = BookingStatus.Pending, PassengerId = 4 },
@@ -226,7 +247,7 @@ namespace FlightManagementCompany.Data
             //    new Booking { BookingId = 9, BookingRef = "BK0009", BookingDate = new DateTime(2025, 8, 28), Status = BookingStatus.Confirmed, PassengerId = 9 },
             //    new Booking { BookingId = 10, BookingRef = "BK0010", BookingDate = new DateTime(2025, 8, 29), Status = BookingStatus.Cancelled, PassengerId = 10 }
 
-              
+
             //);
 
 
@@ -260,7 +281,7 @@ namespace FlightManagementCompany.Data
 
             //// Baggages (20)
             //modelBuilder.Entity<Baggage>().HasData(
-            //    new Baggage { WeightKg = 20, TagNumber = "TAG001"  , TicketId = 1},
+            //    new Baggage { WeightKg = 20, TagNumber = "TAG001", TicketId = 1 },
             //    new Baggage { WeightKg = 25, TagNumber = "TAG002", TicketId = 2 },
             //    new Baggage { WeightKg = 15, TagNumber = "TAG003", TicketId = 3 },
             //    new Baggage { WeightKg = 30, TagNumber = "TAG004", TicketId = 4 },
@@ -283,21 +304,32 @@ namespace FlightManagementCompany.Data
             //);
 
             //// AircraftMaintenance (10)
-            //modelBuilder.Entity<AircraftMaintenance>().HasData(
-            //    new AircraftMaintenance {  MaintenanceDate = new DateTime(2025, 8, 20), Type = "Engine Inspection", Notes = "Engine check", AircraftId = 1 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 21), Type = "Tire Replacement", Notes = "Replaced front tires", AircraftId = 2 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 22), Type = "Fuel System Check", Notes = "Checked fuel lines", AircraftId = 3 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 23), Type = "Avionics Upgrade", Notes = "Upgraded navigation system", AircraftId = 4 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 24), Type = "Hydraulic System Check", Notes = "Checked hydraulic fluid levels", AircraftId = 5 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 25), Type = "Air Conditioning Service", Notes = "Serviced air conditioning system", AircraftId = 6 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 26), Type = "Landing Gear Inspection", Notes = "Inspected landing gear", AircraftId = 7 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 27), Type = "Electrical System Check", Notes = "Checked electrical systems", AircraftId = 8 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 28), Type = "Cabin Pressure Test", Notes = "Tested cabin pressure systems", AircraftId = 9 },
-            //    new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 29), Type = "Safety Equipment Check", Notes = "Checked safety equipment", AircraftId = 10 }
+            //if (!_flightRepository.GetAll().Any())
+            //{
+            //    var aircraftsMaintenance = new List<AircraftMaintenance>
+            //    {
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 20), Type = "Engine Inspection", Notes = "Engine check", AircraftId = 1 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 21), Type = "Tire Replacement", Notes = "Replaced front tires", AircraftId = 2 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 22), Type = "Fuel System Check", Notes = "Checked fuel lines", AircraftId = 3 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 23), Type = "Avionics Upgrade", Notes = "Upgraded navigation system", AircraftId = 4 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 24), Type = "Hydraulic System Check", Notes = "Checked hydraulic fluid levels", AircraftId = 5 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 25), Type = "Air Conditioning Service", Notes = "Serviced air conditioning system", AircraftId = 6 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 26), Type = "Landing Gear Inspection", Notes = "Inspected landing gear", AircraftId = 7 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 27), Type = "Electrical System Check", Notes = "Checked electrical systems", AircraftId = 8 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 28), Type = "Cabin Pressure Test", Notes = "Tested cabin pressure systems", AircraftId = 9 },
+            //        new AircraftMaintenance { MaintenanceDate = new DateTime(2025, 8, 29), Type = "Safety Equipment Check", Notes = "Checked safety equipment", AircraftId = 10 }
+            //    };
+
+
+            //    foreach (var maintenance in aircraftsMaintenance) _flightRepository.Add(maintenance);
+
+                
+
+            //}
 
 
 
-            //    );
         }
     }
+
 }
