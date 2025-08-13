@@ -567,6 +567,7 @@ namespace FlightManagementCompany.Data
         }
 
 
+        //SeedData.Seed(modelBuilder);
 
 
     }
