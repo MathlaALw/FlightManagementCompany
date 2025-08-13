@@ -24,6 +24,9 @@ namespace FlightManagementCompany.Models
        
         public string Status { get; set; }
 
-        
+        // Navigation property
+        // one to many relationship with Ticket
+        // One booking can have many tickets
+        public ICollection<Ticket> Tickets { get; set; }
     }
 }

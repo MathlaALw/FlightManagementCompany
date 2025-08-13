@@ -21,6 +21,9 @@ namespace FlightManagementCompany.Models
         
         public string LicenseNo { get; set; }
 
-        
+        // Navigation property to link to FlightCrew
+        // one to many relationship with FlightCrew
+        // One crew member can be assigned to many flights
+        public ICollection<FlightCrew> FlightAssignments { get; set; }
     }
 }

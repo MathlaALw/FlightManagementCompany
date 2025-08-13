@@ -22,7 +22,15 @@ namespace FlightManagementCompany.Models
        
         public int Capacity { get; set; }
 
+        // Navigation properties
+        // one to many relationship with Flight
+        // One aircraft can have many flights
+        public ICollection<Flight> Flights { get; set; }
 
-      
+        // one to many relationship with AircraftMaintenance
+        // One aircraft can have many maintenance records
+        public ICollection<AircraftMaintenance> MaintenanceRecords { get; set; }
+    
+    
     }
 }

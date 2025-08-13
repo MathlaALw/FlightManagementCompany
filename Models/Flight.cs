@@ -22,9 +22,26 @@ namespace FlightManagementCompany.Models
        
         public string Status { get; set; }
 
-       
 
 
+        // Navigation properties
+        // one to many relationship with Ticket
+        // One flight can have many tickets
+        public ICollection<Ticket> Tickets { get; set; }
+
+        // one to many relationship with FlightCrew
+        // One flight can have many crew members
+        public ICollection<FlightCrew> FlightCrew { get; set; }
+
+        // one to many relationship with Aircraft
+        // One flight can be assigned to one aircraft
+        public int AircraftId { get; set; }
+        public Aircraft Aircraft { get; set; }
+
+        // one to many relationship with Route
+        // One flight can be assigned to one route
+        public int RouteId { get; set; }
+        public Route Route { get; set; }
 
 
     }

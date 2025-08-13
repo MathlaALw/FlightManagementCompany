@@ -21,6 +21,21 @@ namespace FlightManagementCompany.Models
         public decimal Fare { get; set; }
         public bool CheckedIn {  get; set; }
 
-        
+        // Navigation properties
+        // one to many relationship with Booking
+        // One ticket can be associated with one booking
+        public int BookingId { get; set; }
+        public Booking Booking { get; set; }
+        // one to many relationship with Flight
+        // One ticket can be associated with one flight
+        public int FlightId { get; set; }
+        public Flight Flight { get; set; }
+
+        // one to many relationship with Baggage
+        // One ticket can have many baggage items
+        public ICollection<Baggage> Baggages { get; set; }
+
+
+
     }
 }

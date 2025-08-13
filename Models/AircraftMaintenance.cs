@@ -25,6 +25,10 @@ namespace FlightManagementCompany.Models
 
         public string Notes { get; set; }
 
-       
-    }
+        // // Navigation properties
+        // one to many relationship with Aircraft
+        // One aircraft can have many maintenance records
+        public int AircraftId { get; set; }
+        public Aircraft Aircraft { get; set; }
+        }
 }

@@ -17,6 +17,10 @@ namespace FlightManagementCompany.Models
         
         public string TagNumber { get; set; }
 
-        
+        // Navigation properties
+        // one to many relationship with Ticket
+        // One baggage can be associated with one ticket
+        public int TicketId { get; set; }
+        public Ticket Ticket { get; set; }
     }
 }

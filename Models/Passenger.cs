@@ -24,5 +24,9 @@ namespace FlightManagementCompany.Models
         
         public DateTime DOB { get; set; }
 
+
+        // Navigation property 
+        // one to many relationship with Booking
+        public ICollection<Booking> Bookings { get; set; }
     }
 }

@@ -23,6 +23,13 @@ namespace FlightManagementCompany.Models
         
         public string TimeZone { get; set; }
 
+
+        // Navigation properties
+        // one to many relationship with Route
+        // One airport can be the origin or destination of many routes
+        public ICollection<Route> OriginRoutes { get; set; }
+        public  ICollection<Route> DestinationRoutes { get; set; }
        
+
     }
 }
