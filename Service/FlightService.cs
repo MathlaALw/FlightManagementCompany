@@ -1,4 +1,5 @@
 ﻿using FlightManagementCompany.Data;
+using FlightManagementCompany.DTO;
 using FlightManagementCompany.Models;
 using FlightManagementCompany.Repository;
 using Microsoft.EntityFrameworkCore;
@@ -369,6 +370,41 @@ namespace FlightManagementCompany.Service
 
 
         }
+
+        // Daily Flight Manifest 
+        public IEnumerable<FlightManifestDto> GetDailyFlightManifest(DateTime dateUtc)
+        {
+            // Filter flights for the specific date (UTC)
+            var flights = _flightRepository.GetAll() // get all flights from the repository
+                .Where(f => f.DepartureUtc.Date == dateUtc.Date) // filter by date
+                .Select(f => new FlightManifestDto // class to hold flight manifest details
+                {
+                    // flight fields in the manifest class
+                    FlightNumber = f.FlightNumber,  // get flight number
+                    DepUtc = f.DepartureUtc, // get departure time in UTC
+                    ArrUtc = f.ArrivalUtc, // get arrival time in UTC
+                    Origin = f.Route.OriginAirport.IATA, // get origin airport IATA code
+                    Destination = f.Route.DestinationAirport.IATA, // get destination airport IATA code
+                    AircraftTail = f.Aircraft.TailNumber, // get aircraft tail number
+                    PassengerCount = f.Tickets.Count(), // count of tickets -> total passengers
+                    TotalBaggageKg = f.Tickets // get all tickets for the flight
+                                      .SelectMany(t => t.Baggages) // check all tickets for baggage
+                                      .Sum(b => b.WeightKg), // sum of baggage weights
+                    Crew = f.FlightCrew  // crew is List of FlightCrew -- > Name and Role
+                            .Select(fc => new CrewDto // class to hold crew member details
+                            {
+                                Name = fc.CrewMember.FullName, // get crew member name
+                                Role = fc.RoleOnFlight // get crew member role on the flight
+                            })
+                            .ToList() // convert to list
+                })
+                .ToList(); // execute the query and get the results in a list
+
+            return flights; // return the list of flight manifests
+        }
+
+
+
 
 
 
