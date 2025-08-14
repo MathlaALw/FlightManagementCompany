@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlightManagementCompany.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,9 +11,12 @@ namespace FlightManagementCompany.DTO
     {
         public int CrewId { get; set; }
         public string CrewName { get; set; }
+        public string CrewLicence { get; set; }
         public int FlightAId { get; set; }
         public int FlightBId { get; set; }
         public DateTime FlightADep { get; set; }
         public DateTime FlightBDep { get; set; }
+
+        public List<Flight> Flights { get; set; }
     }
 }
