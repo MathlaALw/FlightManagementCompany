@@ -403,8 +403,28 @@ namespace FlightManagementCompany.Service
             return flights; // return the list of flight manifests
         }
 
+        // Top Routes by Revenue
 
+        public IEnumerable<RouteRevenueDto> GetTopRoutesByRevenue(DateTime startDate, DateTime endDate)
+        {
+            var routeRevenue = _flightRepository.GetAll() // get all flights from the repository
+                .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
+                .SelectMany(f => f.Tickets, (f, t) => new { f.Route, t.Fare }) // flatten tickets with route
+                .GroupBy(x => x.Route) // group by Route
+                .Select(g => new RouteRevenueDto // class to hold route revenue details
+                {
+                    RouteId = g.Key.RouteId, // get Route ID
+                    Origin = g.Key.OriginAirport.IATA, // get origin airport IATA code
+                    Destination = g.Key.DestinationAirport.IATA, // get destination airport IATA code
+                    Revenue = g.Sum(x => x.Fare), // sum of fares for the route
+                    SeatsSold = g.Count(), // count of tickets sold for the route
+                    AvgFare = g.Average(x => x.Fare) // average fare for the route
+                })
+                .OrderByDescending(r => r.Revenue) // order by revenue descending
+                .ToList(); // execute the query and get the results in a list
 
+            return routeRevenue; // return the list of route revenues
+        }
 
 
 
