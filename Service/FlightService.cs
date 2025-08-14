@@ -371,7 +371,7 @@ namespace FlightManagementCompany.Service
 
         }
 
-        // Daily Flight Manifest 
+        //1. Daily Flight Manifest 
         public IEnumerable<FlightManifestDto> GetDailyFlightManifest(DateTime dateUtc)
         {
             // Filter flights for the specific date (UTC)
@@ -403,7 +403,7 @@ namespace FlightManagementCompany.Service
             return flights; // return the list of flight manifests
         }
 
-        // Top Routes by Revenue
+        //2. Top Routes by Revenue
 
         public IEnumerable<RouteRevenueDto> GetTopRoutesByRevenue(DateTime startDate, DateTime endDate)
         {
@@ -425,6 +425,194 @@ namespace FlightManagementCompany.Service
 
             return routeRevenue; // return the list of route revenues
         }
+
+        //3. On-Time Performance 
+        public OnTimePerformanceDto GetOnTimePerformance(DateTime startDate, DateTime endDate)
+        {
+            var flights = _flightRepository.GetAll() // get all flights from the repository
+                .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
+                .ToList(); // execute the query and get the results in a list
+            if (!flights.Any()) return new OnTimePerformanceDto(); // return empty DTO if no flights found
+            var totalFlights = flights.Count; // total number of flights
+            var onTimeFlights = flights.Count(f => f.Status == FlightStatus.Landed || f.Status == FlightStatus.Scheduled); // count of on-time flights
+            var delayedFlights = totalFlights - onTimeFlights; // count of delayed flights
+            return new OnTimePerformanceDto // class to hold on-time performance statistics
+            {
+                TotalFlights = totalFlights, // total number of flights
+                OnTimeFlights = onTimeFlights, // count of on-time flights
+                DelayedFlights = delayedFlights, // count of delayed flights
+                OnTimePercentage = (double)onTimeFlights / totalFlights * 100 // calculate on-time percentage
+            };
+
+        }
+
+        //4. Seat Occupancy Heatmap
+        public IEnumerable<SeatOccupancyDto> GetSeatOccupancyHeatmap(DateTime startDate, DateTime endDate)
+        {
+            var heatmap = _ticketRepository.GetAll() // get all tickets from the repository
+                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date && t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
+                .GroupBy(t => new // group by Aircraft Tail and Seat Number
+                {
+                    t.Flight.Aircraft.TailNumber, 
+                    t.SeatNumber
+                })
+                .Select(g => new SeatOccupancyDto // transform groups into DTOs
+                {
+                    AircraftTail = g.Key.TailNumber, // get Aircraft Tail Number
+                    SeatNumber = g.Key.SeatNumber,  // get Seat Number
+                    TimesOccupied = g.Count() // count how many times this seat was occupied
+                })
+                .OrderByDescending(s => s.TimesOccupied) // Sorts the list so the most frequently occupied seats come first
+                .ToList(); // Convert to List
+
+            return heatmap; // return the list of seat occupancy DTOs
+        }
+
+        //5. Frequent Flyer Stats
+        public IEnumerable<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
+        {
+            var stats = _ticketRepository.GetAll() // get all tickets from the repository
+                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
+                            t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
+                .GroupBy(t => new // group by PassengerId and FullName
+                {
+                    t.Booking.Passenger.PassengerId, // get Passenger ID
+                    t.Booking.Passenger.FullName // get Passenger Full Name
+                }) 
+                .Select(g => new FrequentFlyerDto // class to hold frequent flyer statistics
+                {
+                    PassengerId = g.Key.PassengerId, // get Passenger ID -- Key is anonymous type with PassengerId and FullName (grouping key)
+                    PassengerName = g.Key.FullName, // get Passenger Full Name
+                    FlightsTaken = g.Select(t => t.FlightId).Distinct().Count() // Removes duplicates and counts unique flights taken by the passenger
+                                                                                // g itself is an enumeration of all Ticket rows that belong to that passenger for the filtered date range.
+                })
+                .OrderByDescending(f => f.FlightsTaken) // order by number of flights taken descending
+                .ToList(); // execute the query and get the results in a list
+
+            return stats; // return the list of frequent flyer statistics
+        }
+
+        //6. Average Load Factor
+        public double GetAverageLoadFactor(DateTime startDate, DateTime endDate)
+        {
+            var flights = _flightRepository.GetAll() // get all flights from the repository
+                .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
+                .ToList(); // execute the query and get the results in a list
+            if (!flights.Any()) return 0; // return 0 if no flights found
+            var totalSeats = flights.Sum(f => f.Aircraft.Capacity); // sum of all aircraft seat capacities
+            var totalTicketsSold = flights.Sum(f => f.Tickets.Count()); // sum of all tickets sold for the flights
+            return (double)totalTicketsSold / totalSeats * 100; // calculate average load factor as percentage
+        }
+
+
+        //7. Crew Scheduling Conflicts
+
+        public IEnumerable<CrewConflictDto> GetCrewSchedulingConflicts()
+        {
+            // Get all flights with their crew and times
+            var flightsWithCrew = _flightRepository.GetAll() // get all flights from the repository
+                .Select(f => new // transform each flight into a DTO
+                {
+                    FlightId = f.FlightId, // get Flight ID
+                    DepartureUtc = f.DepartureUtc, // get Departure time in UTC
+                    ArrivalUtc = f.ArrivalUtc, // get Arrival time in UTC
+                    Crew = f.FlightCrew.Select(fc => new // transform each FlightCrew into a DTO
+                    {
+                        CrewId = fc.CrewMember.CrewId, // get Crew ID
+                        FullName = fc.CrewMember.FullName // get Crew Member Full Name
+                    }).ToList() // convert to list
+                    
+                })
+                .ToList(); // execute the query and get the results in a list
+
+
+            var conflicts = new List<CrewConflictDto>(); // list to hold crew conflicts
+
+            // Compare each flight with every other flight
+            foreach (var flightA in flightsWithCrew) // iterate through each flight
+            {
+                foreach (var flightB in flightsWithCrew.Where(f => f.FlightId > flightA.FlightId)) // avoid duplicate pairs
+                {
+                    // Check for overlapping time
+                    bool overlaps = flightA.DepartureUtc < flightB.ArrivalUtc &&
+                                    flightB.DepartureUtc < flightA.ArrivalUtc;
+
+                    if (overlaps)
+                    {
+                        // Find crew assigned to both flights
+                        var overlappingCrew = flightA.Crew
+                            .Join(flightB.Crew,
+                                  ca => ca.CrewId,
+                                  cb => cb.CrewId,
+                                  (ca, cb) => new { ca.CrewId, ca.FullName })
+                            .ToList();
+
+                        // Add each conflict to the list
+                        foreach (var crew in overlappingCrew)
+                        {
+                            conflicts.Add(new CrewConflictDto
+                            {
+                                CrewId = crew.CrewId,
+                                CrewName = crew.FullName,
+                                FlightAId = flightA.FlightId,
+                                FlightBId = flightB.FlightId,
+                                FlightADep = flightA.DepartureUtc,
+                                FlightBDep = flightB.DepartureUtc
+                            });
+                        }
+                    }
+                }
+            }
+
+            return conflicts; // return the list of crew conflicts
+        }
+
+
+        //8. Passengers with Connections
+        //public IEnumerable<PassengerConnectionDto> GetPassengersWithConnections(double maxHoursBetween)
+        //{
+        //    var result = _passengerRepository.GetAll() // get all passengers from the repository
+        //        .Include(p => p.Bookings)
+        //            .ThenInclude(b => b.FlightSegments)
+        //                .ThenInclude(fs => fs.Flight)
+        //        .Select(p => new PassengerConnectionDto
+        //        {
+        //            PassengerId = p.PassengerId,
+        //            PassengerName = p.FullName,
+        //            Legs = p.Bookings.SelectMany(b =>
+        //                b.FlightSegments
+        //                    .OrderBy(fs => fs.Flight.DepartureUtc)
+        //                    .Zip(
+        //                        b.FlightSegments
+        //                            .OrderBy(fs => fs.Flight.DepartureUtc)
+        //                            .Skip(1),
+        //                        (prev, next) => new
+        //                        {
+        //                            BookingId = b.BookingId,
+        //                            FromFlight = prev.Flight,
+        //                            ToFlight = next.Flight,
+        //                            HoursGap = (next.Flight.DepartureUtc - prev.Flight.ArrivalUtc).TotalHours
+        //                        }
+        //                    )
+        //                    .Where(pair => pair.HoursGap >= 0 && pair.HoursGap <= maxHoursBetween)
+        //                    .Select(pair => new ConnectionLegDto
+        //                    {
+        //                        FromFlightId = pair.FromFlight.FlightId,
+        //                        FromArrival = pair.FromFlight.ArrivalUtc,
+        //                        ToFlightId = pair.ToFlight.FlightId,
+        //                        ToDeparture = pair.ToFlight.DepartureUtc,
+        //                        HoursBetween = pair.HoursGap
+        //                    })
+        //            ).ToList(),
+        //            BookingId = p.Bookings.FirstOrDefault()?.BookingId ?? 0
+        //        })
+        //        .Where(dto => dto.Legs.Any())
+        //        .ToList();
+
+        //    return result;
+        //}
+
+
 
 
 
