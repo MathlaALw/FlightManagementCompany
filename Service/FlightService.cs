@@ -287,13 +287,56 @@ namespace FlightManagementCompany.Service
                 }
 
 
-                
+            // Booking data creation
+            if (!_bookingRepository.GetAll().Any())
+            {
+                var bookings = new List<Booking>
+                {
+                    new Booking { BookingId = 1, BookingRef = "BK0001", BookingDate = new DateTime(2025, 8, 20), Status = BookingStatus.Confirmed, PassengerId = 1 },
+                    new Booking { BookingId = 2, BookingRef = "BK0002", BookingDate = new DateTime(2025, 8, 21), Status = BookingStatus.Cancelled, PassengerId = 2 },
+                    new Booking { BookingId = 3, BookingRef = "BK0003", BookingDate = new DateTime(2025, 8, 22), Status = BookingStatus.Confirmed, PassengerId = 3 },
+                    new Booking { BookingId = 4, BookingRef = "BK0004", BookingDate = new DateTime(2025, 8, 23), Status = BookingStatus.Pending, PassengerId = 4 },
+                    new Booking { BookingId = 5, BookingRef = "BK0005", BookingDate = new DateTime(2025, 8, 24), Status = BookingStatus.Confirmed, PassengerId = 5 },
+                    new Booking { BookingId = 6, BookingRef = "BK0006", BookingDate = new DateTime(2025, 8, 25), Status = BookingStatus.Cancelled, PassengerId = 6 },
+                    new Booking { BookingId = 7, BookingRef = "BK0007", BookingDate = new DateTime(2025, 8, 26), Status = BookingStatus.Confirmed, PassengerId = 7 },
+                    new Booking { BookingId = 8, BookingRef = "BK0008", BookingDate = new DateTime(2025, 8, 27), Status = BookingStatus.Pending, PassengerId = 8 },
+                    new Booking { BookingId = 9, BookingRef = "BK0009", BookingDate = new DateTime(2025, 8, 28), Status = BookingStatus.Confirmed, PassengerId = 9 },
+                    new Booking { BookingId = 10, BookingRef = "BK0010", BookingDate = new DateTime(2025, 8, 29), Status = BookingStatus.Cancelled, PassengerId = 10 }
+                };
+                foreach (var booking in bookings)
+                {
+                    _bookingRepository.Add(booking);
+                }
+            }
+
+
+            // Passenger data creation
+            if (!_passengerRepository.GetAll().Any())
+            {
+                var passengers = new List<Passenger>
+                {
+                    new Passenger { FullName = "Salim Alsalami", PassportNo = "111111", Nationality = "Omani", DOB = new DateTime(1990, 1, 1) },
+                    new Passenger { FullName = "Ali Alsinani", PassportNo = "22332", Nationality = "Omani", DOB = new DateTime(1992, 2, 2) },
+                    new Passenger { FullName = "Salim Alsalami", PassportNo = "11311", Nationality = "Omani", DOB = new DateTime(1990, 1, 1) },
+                    new Passenger { FullName = "Ali Alsinani", PassportNo = "22322", Nationality = "Omani", DOB = new DateTime(1992, 2, 2) },
+                    new Passenger { FullName = "Fatima Alhabsi", PassportNo = "33353", Nationality = "Omani", DOB = new DateTime(1995, 3, 3) },
+                    new Passenger { FullName = "Mohammed Albalushi", PassportNo = "4464", Nationality = "Omani", DOB = new DateTime(1988, 4, 4) },
+                    new Passenger { FullName = "Aisha Alharthy", PassportNo = "5455", Nationality = "Omani", DOB = new DateTime(1993, 5, 5) },
+                    new Passenger { FullName = "Othman Alsinani", PassportNo = "313131", Nationality = "Omani", DOB = new DateTime(1990, 7, 31) }
+                };
+
+                foreach (var passenger in passengers)
+                {
+                    _passengerRepository.Add(passenger);
+                }
+            }
 
 
 
 
 
-            
+
+
         }
 
 
