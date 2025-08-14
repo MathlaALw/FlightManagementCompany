@@ -25,28 +25,18 @@ namespace FlightManagementCompany.Service
         private readonly PassengerRepository _passengerRepository;
         private readonly BookingRepository _bookingRepository;
         
-        public FlightService(
-            FlightRepository flightRepository,
-            AircraftRepository aircraftRepository,
-            RouteRepository routeRepository,
-            TicketRepository ticketRepository,
-            FlightCrewRepository flightCrewRepository,
-            CrewMemberRepository flightCrewMemberRepository,
-            AircraftMaintenanceRepository aircraftMaintenanceRepository,
-            AirportRepository airportRepository,
-            PassengerRepository passengerRepository,
-            BookingRepository bookingRepository)
+        public FlightService(FlightDbContext context)
         {
-            _flightRepository = flightRepository;
-            _aircraftRepository = aircraftRepository;
-            _routeRepository = routeRepository;
-            _ticketRepository = ticketRepository;
-            _flightCrewRepository = flightCrewRepository;
-            _flightCrewMemberRepository = flightCrewMemberRepository;
-            _aircraftMaintenanceRepository = aircraftMaintenanceRepository;
-            _airportRepository = airportRepository;
-            _passengerRepository = passengerRepository;
-            _bookingRepository = bookingRepository;
+            _flightRepository = new FlightRepository(context);
+            _aircraftRepository = new AircraftRepository(context);
+            _routeRepository = new RouteRepository(context);
+            _ticketRepository = new TicketRepository(context);
+            _flightCrewRepository = new FlightCrewRepository(context);
+            _flightCrewMemberRepository = new CrewMemberRepository(context);
+            _aircraftMaintenanceRepository = new AircraftMaintenanceRepository(context);
+            _airportRepository = new AirportRepository(context);
+            _passengerRepository = new PassengerRepository(context);
+            _bookingRepository = new BookingRepository(context);
         }
 
         public void CreateSampleData()
