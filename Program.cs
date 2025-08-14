@@ -14,7 +14,7 @@ namespace FlightManagementCompany
             FlightService flightService = new FlightService(context);
 
             // Create sample data
-            flightService.CreateSampleData();
+            // flightService.CreateSampleData();
 
         }
     }
