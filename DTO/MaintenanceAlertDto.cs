@@ -10,9 +10,11 @@ namespace FlightManagementCompany.DTO
     {
 
       
-        int FlightId { get; set; }
+        public int FlightId { get; set; }
         public string FlightNumber { get; set; }
         public string AircraftTail { get; set; }
+
+        public DateTime LastMaintenance { get; set; }
         public DateTime LastMaintenanceDate { get; set; }
         public DateTime NextMaintenanceDueDate { get; set; }
         public bool IsDueForMaintenance { get; set; }
