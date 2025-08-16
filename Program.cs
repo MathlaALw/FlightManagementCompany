@@ -15,7 +15,7 @@ namespace FlightManagementCompany
             // Inject the context into the service
             FlightService flightService = new FlightService(context);
 
-            // Available seats on a flight
+            //5. Available seats on a flight
             Console.WriteLine("Enter the flight ID to check available seats:");
             string? flightIdInput = Console.ReadLine(); // Allow null input
             int flightId;
@@ -27,13 +27,13 @@ namespace FlightManagementCompany
             }
 
             var availableSeats = flightService.GetAvailableSeatsForFlight(flightId);
-            if (availableSeats != null)
+            if (availableSeats.Any())
             {
-                Console.WriteLine($"Available seats on flight {flightId}: {availableSeats}");
+                Console.WriteLine($"Available seats on flight {flightId}: {string.Join(", ", availableSeats)}");
             }
             else
             {
-                Console.WriteLine($"Flight with ID {flightId} not found.");
+                Console.WriteLine($"No available seats found or flight with ID {flightId} does not exist.");
             }
         }
     }
