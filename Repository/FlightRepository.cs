@@ -1,5 +1,6 @@
 ﻿using FlightManagementCompany.Data;
 using FlightManagementCompany.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -51,6 +52,14 @@ namespace FlightManagementCompany.Repository
                 .ToList();
         }
 
+         // Including Flight Details
+        public Flight GetByIdIncludingDetails(int id)
+        {
+            return _context.Flights
+                .Include(f => f.Aircraft)
+                .Include(f => f.Tickets)
+                .FirstOrDefault(f => f.FlightId == id);
+        }
 
 
 
