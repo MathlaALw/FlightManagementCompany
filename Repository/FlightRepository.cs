@@ -52,14 +52,26 @@ namespace FlightManagementCompany.Repository
                 .ToList();
         }
 
-         // Including Flight Details
+        // Including Flight Details
         public Flight GetByIdIncludingDetails(int id)
         {
             return _context.Flights
                 .Include(f => f.Aircraft)
                 .Include(f => f.Tickets)
                 .FirstOrDefault(f => f.FlightId == id);
+
+
         }
+
+        // Get Flight By Ticket
+        public Flight GetFlightByTicket(int ticketId)
+        {
+            return _context.Tickets
+                .Where(t => t.TicketId == ticketId)
+                .Select(t => t.Flight)
+                .FirstOrDefault();
+        }
+
 
 
 

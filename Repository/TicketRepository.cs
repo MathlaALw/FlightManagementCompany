@@ -69,5 +69,13 @@ namespace FlightManagementCompany.Repository
                 .Where(t => t.BookingId == bookingId)
                 .ToList();
         }
+
+
+        // Get Tickets by Booking
+        public Ticket GetTicketByBooking(int bookingId)
+        {
+            return _context.Tickets
+                .FirstOrDefault(t => t.BookingId == bookingId);
+        }
     }
 }

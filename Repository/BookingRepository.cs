@@ -48,5 +48,12 @@ namespace FlightManagementCompany.Repository
                 .ToList();
         }
 
+        // Get Booking by Passenger
+        public IEnumerable<Booking> GetBookingsByPassenger(int passengerId)
+        {
+            return _context.Bookings
+                .Where(b => b.PassengerId == passengerId)
+                .ToList();
+        }
     }
 }

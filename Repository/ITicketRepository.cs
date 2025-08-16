@@ -11,5 +11,7 @@ namespace FlightManagementCompany.Repository
         IEnumerable<Ticket> GetTicketsByBookingRef(string bookingRef);
         IEnumerable<Ticket> GetTicketsByPassengerId(int passengerId);
         void Update(Ticket ticket);
+
+        Ticket GetTicketByBooking(int bookingId);
     }
 }
