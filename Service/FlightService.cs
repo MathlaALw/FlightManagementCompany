@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Schema;
@@ -374,7 +376,7 @@ namespace FlightManagementCompany.Service
         }
 
         //1. Daily Flight Manifest 
-        public IEnumerable<FlightManifestDto> GetDailyFlightManifest(DateTime dateUtc)
+        public List<FlightManifestDto> GetDailyFlightManifest(DateTime dateUtc)
         {
             // Filter flights for the specific date (UTC)
             var flights = _flightRepository.GetAll() // get all flights from the repository
@@ -407,7 +409,7 @@ namespace FlightManagementCompany.Service
 
         //2. Top Routes by Revenue
 
-        public IEnumerable<RouteRevenueDto> GetTopRoutesByRevenue(DateTime startDate, DateTime endDate)
+        public List<RouteRevenueDto> GetTopRoutesByRevenue(DateTime startDate, DateTime endDate)
         {
             var routeRevenue = _flightRepository.GetAll() // get all flights from the repository
                 .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
@@ -449,7 +451,7 @@ namespace FlightManagementCompany.Service
         }
 
         //4. Seat Occupancy Heatmap
-        public IEnumerable<SeatOccupancyDto> GetSeatOccupancyHeatmap(DateTime startDate, DateTime endDate)
+        public List<SeatOccupancyDto> GetSeatOccupancyHeatmap(DateTime startDate, DateTime endDate)
         {
             var heatmap = _ticketRepository.GetAll() // get all tickets from the repository
                 .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date && t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
@@ -519,7 +521,7 @@ namespace FlightManagementCompany.Service
             var bookedSeats = flight.Tickets?.Select(t => t.SeatNumber) ?? Enumerable.Empty<string>();
             var allSeats = Enumerable.Range(1, flight.Aircraft.Capacity).Select(n => n.ToString());
 
-            return allSeats.Except(bookedSeats);
+            return allSeats.Except(bookedSeats); // return all seats that are not booked
         }
 
 
@@ -538,7 +540,7 @@ namespace FlightManagementCompany.Service
 
         //6. Crew Scheduling Conflicts
 
-        public IEnumerable<CrewConflictDto> GetCrewSchedulingConflicts()
+        public List<CrewConflictDto> GetCrewSchedulingConflicts()
         {
             // Get all flights with their crew and times
             var flightsWithCrew = _flightRepository.GetAll() // get all flights from the repository
@@ -682,7 +684,7 @@ namespace FlightManagementCompany.Service
 
        
         //8. Frequent Flyer Stats
-        public IEnumerable<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
+        public List<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
         {
             var stats = _ticketRepository.GetAll() // get all tickets from the repository
                 .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
@@ -741,25 +743,158 @@ namespace FlightManagementCompany.Service
         //}
 
 
+        //10. Baggage Overweight Alerts
+        //Tickets whose total baggage weight exceeds threshold(e.g., 30kg per passenger). Use GroupBy ticket and sum baggage weights.
+
+        public List<BaggageOverweightDto> GetBaggageOverweightAlerts(decimal weightThreshold)
+        {
+            var alerts = _ticketRepository.GetAll() // get all tickets from the repository
+                .Select(t => new // transform each ticket into a DTO
+                {
+                    TicketId = t.TicketId, // get Ticket ID
+                    PassengerName = t.Booking.Passenger.FullName, // get Passenger Full Name
+                    TotalBaggageWeight = t.Baggages.Sum(b => b.WeightKg) // sum of baggage weights for the ticket
+                })
+                .Where(t => t.TotalBaggageWeight > weightThreshold) // filter tickets with total baggage weight exceeding threshold
+                .Select(t => new BaggageOverweightDto // class to hold baggage overweight details
+                {
+                    TicketId = t.TicketId, // get Ticket ID
+                    PassengerName = t.PassengerName, // get Passenger Full Name
+                    TotalBaggageWeight = (double)t.TotalBaggageWeight // get total baggage weight
+                })
+                .ToList(); // execute the query and get the results in a list
+            return alerts; // return the list of baggage overweight alerts
+        }
+
+
+
+        /*Complex Set/Partitioning Examples
+         Use Union to combine two passenger lists(VIP + FrequentFliers), Intersect for passengers present in both, Except for passengers who canceled.
+         Partition flights into pages(Skip, Take) for an admin UI.*/
+        // 11. Complex Set/Partitioning Examples
+        //public List<PassengerDto> GetCombinedPassengerList()
+        //{
+        //    var vipPassengers = _passengerRepository.GetAll() // get all VIP passengers
+        //        .Where(p => p.IsVip) // filter VIP passengers
+        //        .Select(p => new PassengerDto // class to hold passenger details
+        //        {
+        //            PassengerId = p.PassengerId, // get Passenger ID
+        //            FullName = p.FullName // get Passenger Full Name
+        //        });
+        //    var frequentFlyers = _passengerRepository.GetAll() // get all frequent flyers
+        //        .Where(p => p.FlightCount > 5) // filter frequent flyers with more than 5 flights
+        //        .Select(p => new PassengerDto // class to hold passenger details
+        //        {
+        //            PassengerId = p.PassengerId, // get Passenger ID
+        //            FullName = p.FullName // get Passenger Full Name
+        //        });
+        //    var combinedList = vipPassengers.Union(frequentFlyers) // combine both lists using Union
+        //        .Distinct() // ensure distinct passengers
+        //        .ToList(); // convert to list
+        //    return combinedList; // return the combined list of passengers
+        //}
+
+
+        //12. 
+        /* Conversion Operators Demonstration
+        o
+        Return ToDictionary of flights keyed by FlightNumber, ToArray of top 10 routes, AsEnumerable to switch to in-memory calculations for heavy operations, OfType example from mixed object collections. */
+        // 12. Conversion Operators Demonstration
+        public Dictionary<string, Flight> GetFlightsByFlightNumber()
+        {
+            return _flightRepository.GetAll() // get all flights from the repository
+                .ToDictionary(f => f.FlightNumber); // convert to dictionary with FlightNumber as key
+        }
+
+
+        public List<Route> GetTop10Routes()
+        {
+            return _flightRepository.GetAll() // get all flights from the repository
+                .GroupBy(f => f.Route) // group by Route
+                .Select(g => g.Key) // select the Route
+                .OrderByDescending(r => r.Flights.Count()) // order by number of flights descending
+                .Take(10) // take top 10 routes
+                .ToList(); // convert to list
+        }
+
+        public IEnumerable<Flight> GetAllFlights()
+        {
+            return _flightRepository.GetAll() // get all flights from the repository
+                .AsEnumerable(); // switch to in-memory calculations
+        }
+        public IEnumerable<T> GetOfType<T>(IEnumerable<object> mixedCollection) where T : class
+        {
+            return mixedCollection.OfType<T>(); // filter collection to return only items of type T
+        }
+
+
+        // 13. 
+        /*Window-like Operation (running totals)
+        o
+        For each day, compute cumulative revenue (running sum). Implement via OrderBy and Select with aggregate accumulation.*/
+
+        // 13. Window-like Operation (running totals)
+        public List<DailyRevenueDto> GetCumulativeDailyRevenue(DateTime startDate, DateTime endDate)
+        {
+            var dailyRevenue = _ticketRepository.GetAll() // get all tickets from the repository
+                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
+                            t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
+                .GroupBy(t => t.Flight.DepartureUtc.Date) // group by flight departure date
+                .Select(g => new DailyRevenueDto // class to hold daily revenue details
+                {
+                    Date = g.Key, // get the date
+                    DailyRevenue = g.Sum(t => t.Fare) // sum of fares for the day
+                })
+                .OrderBy(d => d.Date) // order by date ascending
+                .ToList(); // execute the query and get the results in a list
+
+            // Calculate cumulative revenue
+            decimal cumulativeSum = 0; // Change type to decimal to match DailyRevenue type
+
+            foreach (var day in dailyRevenue)
+            {
+                cumulativeSum += day.DailyRevenue; // accumulate daily revenue
+                day.CumulativeRevenue = cumulativeSum; // set cumulative revenue
+            }
+            return dailyRevenue; // return the list of daily revenues with cumulative totals
+        }
+
+        /*Forecasting (simple)
+o
+Using historical bookings, project expected bookings for next week by simple average or growth rate (exercise in LINQ + basic math).*/
+        // 14. Forecasting (simple)
+        public decimal ProjectBookingsForNextWeek(DateTime startDate, DateTime endDate)
+        {
+            var bookings = _ticketRepository.GetAll() // get all tickets from the repository
+                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
+                            t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
+                .GroupBy(t => t.Flight.DepartureUtc.Date) // group by flight departure date
+                .Select(g => g.Count()) // count tickets for each day
+                .ToList(); // convert to list
+            if (bookings.Count == 0) return 0; // return 0 if no bookings found
+            var averageBookings = bookings.Average(); // calculate average bookings per day
+            return (decimal)averageBookings * 7; // project expected bookings for next week (7 days)
+
+        }
 
         // -------------------- Helper Function --------------------
         // ---------------------  seat map ---------------------
-        private static List<string> BuildSeatMap(int capacity)
-        {
-            var seats = new List<string>(capacity);
-            if (capacity <= 0) return seats;
-            const int perRow = 6;
-            int rows = (int)Math.Ceiling(capacity / (double)perRow);
-            for (int r = 1; r <= rows; r++)
-            {
-                for (int s = 0; s < perRow; s++)
-                {
-                    if (seats.Count >= capacity) break;
-                    seats.Add($"{r}{(char)('A' + s)}");
-                }
-            }
-            return seats;
-        }
+        //        private static List<string> BuildSeatMap(int capacity)
+        //{
+        //    var seats = new List<string>(capacity);
+        //    if (capacity <= 0) return seats;
+        //    const int perRow = 6;
+        //    int rows = (int)Math.Ceiling(capacity / (double)perRow);
+        //    for (int r = 1; r <= rows; r++)
+        //    {
+        //        for (int s = 0; s < perRow; s++)
+        //        {
+        //            if (seats.Count >= capacity) break;
+        //            seats.Add($"{r}{(char)('A' + s)}");
+        //        }
+        //    }
+        //    return seats;
+        //}
 
     }
 
