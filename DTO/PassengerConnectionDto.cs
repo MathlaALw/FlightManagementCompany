@@ -9,8 +9,7 @@ namespace FlightManagementCompany.DTO
     public class PassengerConnectionDto
     {
         public int PassengerId { get; set; }
-        public string PassengerName { get; set; }
-        public int BookingId { get; set; }
-        public List<ConnectionLegDto> Legs { get; set; }
+        public string Name { get; set; }
+        public List<FlightBookingDto> ConnectingFlights { get; set; }
     }
 }
