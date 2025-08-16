@@ -1,4 +1,5 @@
 ﻿using FlightManagementCompany.Data;
+using FlightManagementCompany.Models;
 using FlightManagementCompany.Service;
 
 namespace FlightManagementCompany
@@ -7,36 +8,33 @@ namespace FlightManagementCompany
     {
         static void Main(string[] args)
         {
-            // check if the database exists, if not create it
+            // Check if the database exists, if not create it
             using FlightDbContext context = new FlightDbContext();
             context.Database.EnsureCreated();
+
             // Inject the context into the service
             FlightService flightService = new FlightService(context);
 
-            // Create sample data
-            // flightService.CreateSampleData();
+            // Available seats on a flight
+            Console.WriteLine("Enter the flight ID to check available seats:");
+            string? flightIdInput = Console.ReadLine(); // Allow null input
+            int flightId;
 
-
-            // Average Load Factor
-            Console.WriteLine("Calculating Average Load Factor...");
-            Console.WriteLine("Enter the start date (yyyy-mm-dd):");
-            string startDateInput = Console.ReadLine();
-            DateTime startDate;
-            while (!DateTime.TryParse(startDateInput, out startDate))
+            while (string.IsNullOrEmpty(flightIdInput) || !int.TryParse(flightIdInput, out flightId))
             {
-                Console.WriteLine("Invalid date format. Please enter the start date (yyyy-mm-dd):");
-                startDateInput = Console.ReadLine();
+                Console.WriteLine("Invalid flight ID. Please enter a valid flight ID:");
+                flightIdInput = Console.ReadLine();
             }
-            Console.WriteLine("Enter the end date (yyyy-mm-dd):");
-            string endDateInput = Console.ReadLine();
-            DateTime endDate;
-            while (!DateTime.TryParse(endDateInput, out endDate))
-            {
-                Console.WriteLine("Invalid date format. Please enter the end date (yyyy-mm-dd):");
-                endDateInput = Console.ReadLine();
-            }
-            var averageLoadFactor = flightService.GetAverageLoadFactor(startDate ,endDate);
 
+            var availableSeats = flightService.GetAvailableSeatsForFlight(flightId);
+            if (availableSeats != null)
+            {
+                Console.WriteLine($"Available seats on flight {flightId}: {availableSeats}");
+            }
+            else
+            {
+                Console.WriteLine($"Flight with ID {flightId} not found.");
+            }
         }
     }
 }
