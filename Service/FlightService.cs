@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 
 namespace FlightManagementCompany.Service
 {
@@ -307,7 +308,7 @@ namespace FlightManagementCompany.Service
             {
                 var tickets = new List<Ticket>
                     {
-                    new Ticket { SeatNumber = "1A", Fare = 500.00m, CheckedIn = true, BookingId = 9, FlightId = 21 },
+                    new Ticket { SeatNumber = "1A", Fare = 500.00m, CheckedIn = true, BookingId = 1, FlightId = 21 },
                     new Ticket { SeatNumber = "1B", Fare = 600.00m, CheckedIn = false, BookingId = 2, FlightId = 22 },
                     new Ticket { SeatNumber = "1C", Fare = 550.00m, CheckedIn = true, BookingId = 3, FlightId = 23 },
                     new Ticket { SeatNumber = "1D", Fare = 700.00m, CheckedIn = false, BookingId = 4, FlightId = 24 },
@@ -315,7 +316,7 @@ namespace FlightManagementCompany.Service
                     new Ticket { SeatNumber = "1F", Fare = 800.00m, CheckedIn = false, BookingId = 6, FlightId = 26 },
                     new Ticket { SeatNumber = "2A", Fare = 520.00m, CheckedIn = true, BookingId = 7, FlightId = 27 },
                     new Ticket { SeatNumber = "2B", Fare = 620.00m, CheckedIn = false, BookingId = 8, FlightId = 28 },
-                    new Ticket { SeatNumber = "2C", Fare = 570.00m, CheckedIn = true, BookingId = 9, FlightId = 29 },
+                    new Ticket { SeatNumber = "2C", Fare = 570.00m, CheckedIn = true, BookingId = 1, FlightId = 29 },
                     new Ticket { SeatNumber = "2D", Fare = 720.00m, CheckedIn = false, BookingId = 2, FlightId = 10 },
                     new Ticket { SeatNumber = "3A", Fare = 530.00m, CheckedIn = true, BookingId = 8, FlightId = 11 },
                     new Ticket { SeatNumber = "3B", Fare = 630.00m, CheckedIn = false, BookingId = 2, FlightId = 12 },
@@ -325,7 +326,7 @@ namespace FlightManagementCompany.Service
                     new Ticket { SeatNumber = "3F", Fare = 830.00m, CheckedIn = false, BookingId = 6, FlightId = 16 },
                     new Ticket { SeatNumber = "4A", Fare = 540.00m, CheckedIn = true, BookingId = 7, FlightId = 17 },
                     new Ticket { SeatNumber = "4B", Fare = 640.00m, CheckedIn = false, BookingId = 8, FlightId = 18 },
-                    new Ticket { SeatNumber = "4C", Fare = 590.00m, CheckedIn = true, BookingId = 9, FlightId = 19 },
+                    new Ticket { SeatNumber = "4C", Fare = 590.00m, CheckedIn = true, BookingId = 1, FlightId = 19 },
                     new Ticket { SeatNumber = "4D", Fare = 740.00m, CheckedIn = false, BookingId = 2, FlightId = 20 }
                     };
                 foreach (var ticket in tickets)
@@ -341,8 +342,8 @@ namespace FlightManagementCompany.Service
                 {
                     new Baggage { WeightKg = 20, TagNumber = "TAG001" , TicketId = 10},
                     new Baggage { WeightKg = 25, TagNumber = "TAG002", TicketId = 12 },
-                    new Baggage { WeightKg = 15, TagNumber = "TAG003", TicketId = 3 },
-                    new Baggage { WeightKg = 30, TagNumber = "TAG004", TicketId = 4 },
+                    new Baggage { WeightKg = 15, TagNumber = "TAG003", TicketId = 13 },
+                    new Baggage { WeightKg = 30, TagNumber = "TAG004", TicketId = 14 },
                     new Baggage { WeightKg = 22, TagNumber = "TAG005", TicketId = 5 },
                     new Baggage { WeightKg = 18, TagNumber = "TAG006", TicketId = 6 },
                     new Baggage { WeightKg = 28, TagNumber = "TAG007", TicketId = 7 },
@@ -467,6 +468,72 @@ namespace FlightManagementCompany.Service
 
             return heatmap; // return the list of seat occupancy DTOs
         }
+
+        // 5. Find Available Seats for a Flight
+        //public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
+        //{
+            //var flight = _flightRepository.GetById(flightId); // get flight by ID  
+            //if (flight == null) return Enumerable.Empty<string>(); // return empty if flight not found  
+
+            ////return availableSeats; // return the list of available seats  
+            //var capacity = flight.Aircraft.Capacity; // get aircraft capacity
+            //// check if capacity is valid
+            //if (capacity <= 0) return Enumerable.Empty<string>(); // return empty if capacity is invalid
+            //var seatMap = BuildSeatMap(capacity); // get aircraft seat map
+
+
+            //var bookedSeats = _ticketRepository.GetAll() // get all tickets from the repository
+            //    .Where(t => t.FlightId == flightId) // filter tickets by flight ID
+            //    .Select(t => t.SeatNumber) // select booked seat numbers
+            //    .ToList(); // convert to list
+
+            //var availableSeats = seatMap // use the seat map to generate seat numbers
+            //    .Where(seat => !bookedSeats.Contains(seat)) // filter out booked seats
+            //    .ToList(); // convert to list
+
+
+            ////return availableSeats; // return the list of available seats
+            //var flight = _flightRepository.GetById(flightId); // get flight by ID
+            //if (flight == null) return Enumerable.Empty<string>(); // return empty if flight not found
+            //var capacity = flight.Aircraft.Capacity; // get aircraft capacity
+            //// check if capacity is valid
+            //if (capacity <= 0) return Enumerable.Empty<string>(); // return empty if capacity is invalid
+            //var seatMap = BuildSeatMap(capacity); // get aircraft seat map
+            //var bookedSeats = _ticketRepository.GetAll() // get all tickets from the repository
+            //    .Where(t => t.FlightId == flightId) // filter tickets by flight ID
+            //    .Select(t => t.SeatNumber) // select booked seat numbers
+            //    .ToList(); // convert to list
+            //var availableSeats = seatMap // use the seat map to generate seat numbers
+            //    .Where(seat => !bookedSeats.Contains(seat)) // filter out booked seats
+            //    .ToList(); // convert to list
+            //return availableSeats; // return the list of available seats
+        //}
+        public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
+        {
+            var flight = _flightRepository.GetById(flightId);
+
+            if (flight == null || flight.Aircraft == null)
+                return Enumerable.Empty<string>();
+
+            var bookedSeats = flight.Tickets?.Select(t => t.SeatNumber) ?? Enumerable.Empty<string>();
+            var allSeats = Enumerable.Range(1, flight.Aircraft.Capacity).Select(n => n.ToString());
+
+            return allSeats.Except(bookedSeats);
+        }
+
+
+        
+
+
+
+
+
+
+
+
+
+
+
 
         //5. Frequent Flyer Stats
         public IEnumerable<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
@@ -613,9 +680,28 @@ namespace FlightManagementCompany.Service
         //}
 
 
+        // 9. 
 
 
 
+        // -------------------- Helper Function --------------------
+        // ---------------------  seat map ---------------------
+        private static List<string> BuildSeatMap(int capacity)
+        {
+            var seats = new List<string>(capacity);
+            if (capacity <= 0) return seats;
+            const int perRow = 6;
+            int rows = (int)Math.Ceiling(capacity / (double)perRow);
+            for (int r = 1; r <= rows; r++)
+            {
+                for (int s = 0; s < perRow; s++)
+                {
+                    if (seats.Count >= capacity) break;
+                    seats.Add($"{r}{(char)('A' + s)}");
+                }
+            }
+            return seats;
+        }
 
     }
 
