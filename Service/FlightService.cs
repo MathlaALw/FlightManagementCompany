@@ -311,14 +311,14 @@ namespace FlightManagementCompany.Service
             {
                 var tickets = new List<Ticket>
                     {
-                    new Ticket { SeatNumber = "1A", Fare = 500.00m, CheckedIn = true, BookingId = 1, FlightId = 21 },
+                    new Ticket { SeatNumber = "1A", Fare = 500.00m, CheckedIn = true, BookingId = 1, FlightId = 1 },
                     new Ticket { SeatNumber = "1B", Fare = 600.00m, CheckedIn = false, BookingId = 2, FlightId = 22 },
-                    new Ticket { SeatNumber = "1C", Fare = 550.00m, CheckedIn = true, BookingId = 3, FlightId = 23 },
+                    new Ticket { SeatNumber = "1C", Fare = 550.00m, CheckedIn = true, BookingId = 3, FlightId = 1 },
                     new Ticket { SeatNumber = "1D", Fare = 700.00m, CheckedIn = false, BookingId = 4, FlightId = 24 },
-                    new Ticket { SeatNumber = "1E", Fare = 650.00m, CheckedIn = true, BookingId = 5, FlightId = 25 },
+                    new Ticket { SeatNumber = "1E", Fare = 650.00m, CheckedIn = true, BookingId = 5, FlightId = 1 },
                     new Ticket { SeatNumber = "1F", Fare = 800.00m, CheckedIn = false, BookingId = 6, FlightId = 26 },
                     new Ticket { SeatNumber = "2A", Fare = 520.00m, CheckedIn = true, BookingId = 7, FlightId = 27 },
-                    new Ticket { SeatNumber = "2B", Fare = 620.00m, CheckedIn = false, BookingId = 8, FlightId = 28 },
+                    new Ticket { SeatNumber = "2B", Fare = 620.00m, CheckedIn = false, BookingId = 8, FlightId = 1 },
                     new Ticket { SeatNumber = "2C", Fare = 570.00m, CheckedIn = true, BookingId = 1, FlightId = 29 },
                     new Ticket { SeatNumber = "2D", Fare = 720.00m, CheckedIn = false, BookingId = 2, FlightId = 10 },
                     new Ticket { SeatNumber = "3A", Fare = 530.00m, CheckedIn = true, BookingId = 8, FlightId = 11 },
@@ -378,99 +378,144 @@ namespace FlightManagementCompany.Service
         //1. Daily Flight Manifest 
         public List<FlightManifestDto> GetDailyFlightManifest(DateTime dateUtc)
         {
-            // Filter flights for the specific date (UTC)
-            var flights = _flightRepository.GetAll() // get all flights from the repository
-                .Where(f => f.DepartureUtc.Date == dateUtc.Date) // filter by date
-                .Select(f => new FlightManifestDto // class to hold flight manifest details
+            // Change IEnumerable<Flight> to IQueryable<Flight> to enable EF Core extensions like Include.
+            var flights = _flightRepository.GetAll()
+                .AsQueryable() // Convert IEnumerable to IQueryable to use EF Core methods. 
+                .Include(f => f.Route)
+                    .ThenInclude(r => r.OriginAirport)
+                .Include(f => f.Route)
+                    .ThenInclude(r => r.DestinationAirport)
+                .Include(f => f.Aircraft)
+                .Include(f => f.Tickets)
+                    .ThenInclude(t => t.Baggages)
+                .Include(f => f.FlightCrew)
+                    .ThenInclude(fc => fc.CrewMember)
+                .Where(f => f.DepartureUtc.Date == dateUtc.Date)
+                .Select(f => new FlightManifestDto
                 {
-                    // flight fields in the manifest class
-                    FlightNumber = f.FlightNumber,  // get flight number
-                    DepUtc = f.DepartureUtc, // get departure time in UTC
-                    ArrUtc = f.ArrivalUtc, // get arrival time in UTC
-                    Origin = f.Route.OriginAirport.IATA, // get origin airport IATA code
-                    Destination = f.Route.DestinationAirport.IATA, // get destination airport IATA code
-                    AircraftTail = f.Aircraft.TailNumber, // get aircraft tail number
-                    PassengerCount = f.Tickets.Count(), // count of tickets -> total passengers
-                    TotalBaggageKg = f.Tickets // get all tickets for the flight
-                                      .SelectMany(t => t.Baggages) // check all tickets for baggage
-                                      .Sum(b => b.WeightKg), // sum of baggage weights
-                    Crew = f.FlightCrew  // crew is List of FlightCrew -- > Name and Role
-                            .Select(fc => new CrewDto // class to hold crew member details
+                    FlightId = f.FlightId,
+                    FlightNumber = f.FlightNumber,
+                    DepUtc = f.DepartureUtc,
+                    ArrUtc = f.ArrivalUtc,
+                    Origin = f.Route != null && f.Route.OriginAirport != null
+                        ? f.Route.OriginAirport.IATA
+                        : "N/A",
+                    Destination = f.Route != null && f.Route.DestinationAirport != null
+                        ? f.Route.DestinationAirport.IATA
+                        : "N/A",
+                    AircraftTail = f.Aircraft != null
+                        ? f.Aircraft.TailNumber
+                        : "N/A",
+                    PassengerCount = f.Tickets != null
+                        ? f.Tickets.Count()
+                        : 0,
+                    TotalBaggageKg = f.Tickets != null
+                        ? f.Tickets
+                            .Where(t => t.Baggages != null)
+                            .SelectMany(t => t.Baggages)
+                            .Sum(b => b.WeightKg)
+                        : 0,
+                    Crew = f.FlightCrew != null
+                        ? f.FlightCrew
+                            .Where(fc => fc.CrewMember != null)
+                            .Select(fc => new CrewDto
                             {
-                                Name = fc.CrewMember.FullName, // get crew member name
-                                Role = fc.RoleOnFlight // get crew member role on the flight
+                                Name = fc.CrewMember.FullName,
+                                Role = fc.RoleOnFlight
                             })
-                            .ToList() // convert to list
+                            .ToList()
+                        : new List<CrewDto>()
                 })
-                .ToList(); // execute the query and get the results in a list
+                .ToList();
 
-            return flights; // return the list of flight manifests
+            return flights;
         }
-
         //2. Top Routes by Revenue
 
-        public List<RouteRevenueDto> GetTopRoutesByRevenue(DateTime startDate, DateTime endDate)
+        public IEnumerable<RouteRevenueDto> GetRouteRevenue(DateTime startDate, DateTime endDate)
         {
-            var routeRevenue = _flightRepository.GetAll() // get all flights from the repository
-                .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
-                .SelectMany(f => f.Tickets, (f, t) => new { f.Route, t.Fare }) // flatten tickets with route
-                .GroupBy(x => x.Route) // group by Route
-                .Select(g => new RouteRevenueDto // class to hold route revenue details
+            var result = _flightRepository.GetFlightsByDateRange(startDate, endDate) // already filters by date
+                .SelectMany(f => f.Tickets, (f, t) => new { f, t })
+                .Where(ft => ft.t.Fare != null) // ensures no null fares
+                .GroupBy(ft => new
                 {
-                    RouteId = g.Key.RouteId, // get Route ID
-                    Origin = g.Key.OriginAirport.IATA, // get origin airport IATA code
-                    Destination = g.Key.DestinationAirport.IATA, // get destination airport IATA code
-                    Revenue = g.Sum(x => x.Fare), // sum of fares for the route
-                    SeatsSold = g.Count(), // count of tickets sold for the route
-                    AvgFare = g.Average(x => x.Fare) // average fare for the route
+                    ft.f.Route.RouteId,
+                    Origin = ft.f.Route.OriginAirport.IATA,
+                    Destination = ft.f.Route.DestinationAirport.IATA
                 })
-                .OrderByDescending(r => r.Revenue) // order by revenue descending
-                .ToList(); // execute the query and get the results in a list
+                .Select(g => new RouteRevenueDto
+                {
+                    RouteId = g.Key.RouteId,
+                    Origin = g.Key.Origin,
+                    Destination = g.Key.Destination,
+                    Revenue = g.Sum(ft => ft.t.Fare) ,// sum of fares for the route
+                    SeatsSold = g.Count(),
+                    AvgFare = g.Average(ft => ft.t.Fare) // average fare for the route
+                })
+                .OrderByDescending(r => r.Revenue)
+                .ToList();
 
-            return routeRevenue; // return the list of route revenues
+            return result;
         }
+
+
 
         //3. On-Time Performance 
         public OnTimePerformanceDto GetOnTimePerformance(DateTime startDate, DateTime endDate)
         {
-            var flights = _flightRepository.GetAll() // get all flights from the repository
-                .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
-                .ToList(); // execute the query and get the results in a list
-            if (!flights.Any()) return new OnTimePerformanceDto(); // return empty DTO if no flights found
-            var totalFlights = flights.Count; // total number of flights
-            var onTimeFlights = flights.Count(f => f.Status == FlightStatus.Landed || f.Status == FlightStatus.Scheduled); // count of on-time flights
-            var delayedFlights = totalFlights - onTimeFlights; // count of delayed flights
-            return new OnTimePerformanceDto // class to hold on-time performance statistics
-            {
-                TotalFlights = totalFlights, // total number of flights
-                OnTimeFlights = onTimeFlights, // count of on-time flights
-                DelayedFlights = delayedFlights, // count of delayed flights
-                OnTimePercentage = (double)onTimeFlights / totalFlights * 100 // calculate on-time percentage
-            };
+            var flights = _flightRepository.GetAll()
+                .Where(f => f.DepartureUtc.Date >= startDate.Date &&
+                            f.DepartureUtc.Date <= endDate.Date)
+                .ToList();
 
+            if (!flights.Any())
+                return new OnTimePerformanceDto(); // return empty DTO if no flights found
+
+            var totalFlights = flights.Count;
+
+            // Example: counting "on-time" flights as Landed without delay, or still Scheduled
+            var onTimeFlights = flights.Count(f =>
+                f.Status == FlightStatus.Landed || f.Status == FlightStatus.Scheduled);
+
+            var delayedFlights = totalFlights - onTimeFlights;
+
+            return new OnTimePerformanceDto
+            {
+                TotalFlights = totalFlights,
+                OnTimeFlights = onTimeFlights,
+                DelayedFlights = delayedFlights,
+                OnTimePercentage = (double)onTimeFlights / totalFlights * 100
+            };
         }
+
 
         //4. Seat Occupancy Heatmap
         public List<SeatOccupancyDto> GetSeatOccupancyHeatmap(DateTime startDate, DateTime endDate)
         {
-            var heatmap = _ticketRepository.GetAll() // get all tickets from the repository
-                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date && t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
-                .GroupBy(t => new // group by Aircraft Tail and Seat Number
+            var heatmap = _ticketRepository.GetAll()
+                // guard all navs used later
+                .Where(t => t.Flight != null
+                            && t.Flight.Aircraft != null
+                            && !string.IsNullOrEmpty(t.SeatNumber)
+                            && t.Flight.DepartureUtc.Date >= startDate.Date
+                            && t.Flight.DepartureUtc.Date <= endDate.Date)
+                .GroupBy(t => new
                 {
-                    t.Flight.Aircraft.TailNumber,
-                    t.SeatNumber
+                    Tail = t.Flight.Aircraft.TailNumber,  // safe now
+                    Seat = t.SeatNumber                   // safe now
                 })
-                .Select(g => new SeatOccupancyDto // transform groups into DTOs
+                .Select(g => new SeatOccupancyDto
                 {
-                    AircraftTail = g.Key.TailNumber, // get Aircraft Tail Number
-                    SeatNumber = g.Key.SeatNumber,  // get Seat Number
-                    TimesOccupied = g.Count() // count how many times this seat was occupied
+                    AircraftTail = g.Key.Tail ?? "Unknown",
+                    SeatNumber = g.Key.Seat,
+                    TimesOccupied = g.Count()
                 })
-                .OrderByDescending(s => s.TimesOccupied) // Sorts the list so the most frequently occupied seats come first
-                .ToList(); // Convert to List
+                .OrderByDescending(s => s.TimesOccupied)
+                .ToList();
 
-            return heatmap; // return the list of seat occupancy DTOs
+            return heatmap;
         }
+
 
         // 5. Find Available Seats for a Flight
         //public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
@@ -511,6 +556,21 @@ namespace FlightManagementCompany.Service
         //    .ToList(); // convert to list
         //return availableSeats; // return the list of available seats
         //}
+        //public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
+        //{
+        //    var flight = _flightRepository.GetById(flightId);
+
+        //    if (flight == null || flight.Aircraft == null)
+        //        return Enumerable.Empty<string>();
+
+        //    var bookedSeats = flight.Tickets?.Select(t => t.SeatNumber) ?? Enumerable.Empty<string>();
+        //    var allSeats = Enumerable.Range(1, flight.Aircraft.Capacity).Select(n => n.ToString());
+
+        //    return allSeats.Except(bookedSeats); // return all seats that are not booked
+        //}
+
+
+
         public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
         {
             var flight = _flightRepository.GetById(flightId);
@@ -518,17 +578,16 @@ namespace FlightManagementCompany.Service
             if (flight == null || flight.Aircraft == null)
                 return Enumerable.Empty<string>();
 
-            var bookedSeats = flight.Tickets?.Select(t => t.SeatNumber) ?? Enumerable.Empty<string>();
-            var allSeats = Enumerable.Range(1, flight.Aircraft.Capacity).Select(n => n.ToString());
+            var seatMap = BuildSeatMap(flight.Aircraft.Capacity);
 
-            return allSeats.Except(bookedSeats); // return all seats that are not booked
+            var bookedSeats = _ticketRepository.GetAll()
+                .Where(t => t.FlightId == flightId)
+                .Select(t => t.SeatNumber)
+                .ToList();
+
+            return seatMap.Where(seat => !bookedSeats.Contains(seat));
+
         }
-
-
-
-
-
-
 
 
 
@@ -542,147 +601,122 @@ namespace FlightManagementCompany.Service
 
         public List<CrewConflictDto> GetCrewSchedulingConflicts()
         {
-            // Get all flights with their crew and times
-            var flightsWithCrew = _flightRepository.GetAll() // get all flights from the repository
-                .Select(f => new // transform each flight into a DTO
-                {
-                    FlightId = f.FlightId, // get Flight ID
-                    DepartureUtc = f.DepartureUtc, // get Departure time in UTC
-                    ArrivalUtc = f.ArrivalUtc, // get Arrival time in UTC
-                    Crew = f.FlightCrew.Select(fc => new // transform each FlightCrew into a DTO
-                    {
-                        CrewId = fc.CrewMember.CrewId, // get Crew ID
-                        FullName = fc.CrewMember.FullName // get Crew Member Full Name
-                    }).ToList() // convert to list
+            var flightsWithCrew = _flightRepository.GetAll()
+         .Select(f => new
+         {
+             FlightId = f.FlightId,
+             DepartureUtc = f.DepartureUtc,
+             ArrivalUtc = f.ArrivalUtc,
+             Crew = (f.FlightCrew ?? new List<FlightCrew>())
+                     .Where(fc => fc != null && fc.CrewMember != null)
+                     .Select(fc => new
+                     {
+                         CrewId = fc.CrewMember.CrewId,
+                         FullName = fc.CrewMember.FullName,
+                         LicenseNo = fc.CrewMember.LicenseNo
+                     })
+                     .ToList()
+         })
+         // ignore flights that have no crew after null-safety filtering
+         .Where(f => f.Crew.Count > 0)
+         .ToList();
 
-                })
-                .ToList(); // execute the query and get the results in a list
+            var conflicts = new List<CrewConflictDto>();
 
-
-            var conflicts = new List<CrewConflictDto>(); // list to hold crew conflicts
-
-            // Compare each flight with every other flight
-            foreach (var flightA in flightsWithCrew) // iterate through each flight
+            // Compare flights pairwise (simple and clear). 
+            // If your dates can be nullable, add HasValue checks here.
+            foreach (var a in flightsWithCrew)
             {
-                foreach (var flightB in flightsWithCrew.Where(f => f.FlightId > flightA.FlightId)) // avoid duplicate pairs
+                foreach (var b in flightsWithCrew.Where(f => f.FlightId > a.FlightId))
                 {
-                    // Check for overlapping time
-                    bool overlaps = flightA.DepartureUtc < flightB.ArrivalUtc &&
-                                    flightB.DepartureUtc < flightA.ArrivalUtc;
+                    bool overlaps = a.DepartureUtc < b.ArrivalUtc &&
+                                    b.DepartureUtc < a.ArrivalUtc;
 
-                    if (overlaps)
+                    if (!overlaps) continue;
+
+                    var overlappingCrew = a.Crew
+                        .Join(b.Crew, ca => ca.CrewId, cb => cb.CrewId,
+                              (ca, cb) => new { ca.CrewId, ca.FullName })
+                        .ToList();
+
+                    foreach (var c in overlappingCrew)
                     {
-                        // Find crew assigned to both flights
-                        var overlappingCrew = flightA.Crew
-                            .Join(flightB.Crew,
-                                  ca => ca.CrewId,
-                                  cb => cb.CrewId,
-                                  (ca, cb) => new { ca.CrewId, ca.FullName })
-                            .ToList();
-
-                        // Add each conflict to the list
-                        foreach (var crew in overlappingCrew)
+                        conflicts.Add(new CrewConflictDto
                         {
-                            conflicts.Add(new CrewConflictDto
-                            {
-                                CrewId = crew.CrewId,
-                                CrewName = crew.FullName,
-                                FlightAId = flightA.FlightId,
-                                FlightBId = flightB.FlightId,
-                                FlightADep = flightA.DepartureUtc,
-                                FlightBDep = flightB.DepartureUtc
-                            });
-                        }
+                            CrewId = c.CrewId,
+                            CrewName = c.FullName,
+                            FlightAId = a.FlightId,
+                            FlightBId = b.FlightId,
+                            FlightADep = a.DepartureUtc,
+                            FlightBDep = b.DepartureUtc
+                        });
                     }
                 }
             }
 
-            return conflicts; // return the list of crew conflicts
+            return conflicts;
         }
 
 
         //7. Passengers with Connections
-        //public IEnumerable<PassengerConnectionDto> GetPassengersWithConnections(double maxHoursBetween)
-        //{
-        //    var result = _passengerRepository.GetAll() // get all passengers from the repository
-        //        .Include(p => p.Bookings)
-        //            .ThenInclude(b => b.FlightSegments)
-        //                .ThenInclude(fs => fs.Flight)
-        //        .Select(p => new PassengerConnectionDto
-        //        {
-        //            PassengerId = p.PassengerId,
-        //            PassengerName = p.FullName,
-        //            Legs = p.Bookings.SelectMany(b =>
-        //                b.FlightSegments
-        //                    .OrderBy(fs => fs.Flight.DepartureUtc)
-        //                    .Zip(
-        //                        b.FlightSegments
-        //                            .OrderBy(fs => fs.Flight.DepartureUtc)
-        //                            .Skip(1),
-        //                        (prev, next) => new
-        //                        {
-        //                            BookingId = b.BookingId,
-        //                            FromFlight = prev.Flight,
-        //                            ToFlight = next.Flight,
-        //                            HoursGap = (next.Flight.DepartureUtc - prev.Flight.ArrivalUtc).TotalHours
-        //                        }
-        //                    )
-        //                    .Where(pair => pair.HoursGap >= 0 && pair.HoursGap <= maxHoursBetween)
-        //                    .Select(pair => new ConnectionLegDto
-        //                    {
-        //                        FromFlightId = pair.FromFlight.FlightId,
-        //                        FromArrival = pair.FromFlight.ArrivalUtc,
-        //                        ToFlightId = pair.ToFlight.FlightId,
-        //                        ToDeparture = pair.ToFlight.DepartureUtc,
-        //                        HoursBetween = pair.HoursGap
-        //                    })
-        //            ).ToList(),
-        //            BookingId = p.Bookings.FirstOrDefault()?.BookingId ?? 0
-        //        })
-        //        .Where(dto => dto.Legs.Any())
-        //        .ToList();
+        public List<PassengerConnectionDto> GetPassengersWithConnections(double maxHoursBetween)
+        {
+            var passengers = _passengerRepository.GetAll()
+                // Only keep passengers who have at least one booking with at least 2 tickets (null-safe)
+                .Where(p => (p.Bookings ?? new List<Booking>())
+                                .Any(b => (b.Tickets ?? new List<Ticket>()).Count >= 2))
+                .Select(p => new PassengerConnectionDto
+                {
+                    PassengerId = p.PassengerId,
+                    Name = p.FullName,
 
-        //    return result;
-        //}
+                    ConnectingFlights = (p.Bookings ?? new List<Booking>())
+                        .SelectMany(b =>
+                        {
+                            // Order tickets by the *flight* departure time (null-safe)
+                            var ordered = (b.Tickets ?? new List<Ticket>())
+                                .Where(t =>
+                                       t.Flight != null &&
+                                       t.Flight.DepartureUtc != default &&
+                                       t.Flight.ArrivalUtc != default)
+                                .OrderBy(t => t.Flight.DepartureUtc)
+                                .ToList();
+
+                            // Pair consecutive tickets and compute layover between flights
+                            return ordered.Zip(ordered.Skip(1), (prev, next) => new
+                            {
+                                Prev = prev,
+                                Next = next,
+                                GapHours = (next.Flight.DepartureUtc - prev.Flight.ArrivalUtc).TotalHours
+                            })
+                            .Where(x => x.GapHours >= 0 && x.GapHours <= maxHoursBetween)
+                            .Select(x => new FlightBookingDto
+                            {
+                                // You previously showed the "next flight" details in the leg; keeping that.
+                                FlightId = x.Next.FlightId,
+                                FlightNumber = x.Next.Flight?.FlightNumber ?? "N/A",
+                                DepartureAirport = x.Next.Flight?.Route?.OriginAirport?.IATA ?? "N/A",
+                                ArrivalAirport = x.Next.Flight?.Route?.DestinationAirport?.IATA ?? "N/A",
+                                DepartureTime = x.Next.Flight?.DepartureUtc ?? default,
+                                ArrivalTime = x.Next.Flight?.ArrivalUtc ?? default,
+                                SeatNumber = x.Next.SeatNumber,
+                                // Optional: if your DTO has room, you can add LayoverHours = x.GapHours
+                            });
+                        })
+                        .ToList()
+                })
+                .Where(p => p.ConnectingFlights != null && p.ConnectingFlights.Any())
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            return passengers;
+        }
 
 
 
-        //public List<PassengerConnectionDto> GetPassengersWithConnections()
-        //{
-        //    var passengers = _passengerRepository.GetAll()
-        //        .Where(p => _bookingRepository.GetBookingsByPassenger(p.PassengerId).Count() >= 2)
-        //        .Select(p => new PassengerConnectionDto
-        //        {
-        //            PassengerId = p.PassengerId,
-        //            Name = p.FullName,
-        //            ConnectingFlights =
-        //                _bookingRepository.GetBookingsByPassenger(p.PassengerId)
-        //                    .SelectMany(b => b.FlightSegments
-        //                        .OrderBy(fs => fs.Flight.DepartureUtc)
-        //                        .Zip(
-        //                            b.FlightSegments.OrderBy(fs => fs.Flight.DepartureUtc).Skip(1),
-        //                            (prev, next) => new ConnectionLegDto
-        //                            {
-        //                                FromFlightId = prev.Flight.FlightId,
-        //                                FromArrival = prev.Flight.ArrivalUtc,
-        //                                ToFlightId = next.Flight.FlightId,
-        //                                ToDeparture = next.Flight.DepartureUtc,
-        //                                HoursBetween = (next.Flight.DepartureUtc - prev.Flight.ArrivalUtc).TotalHours
-        //                            }))
-        //                    .Where(cl => cl.HoursBetween >= 0 && cl.HoursBetween <= 24) // Assuming max 24 hours between connections
-        //                    .ToList()
-        //        })
-        //        .ToList();
 
-        //    // Filter out passengers with no connecting flights
-        //    return passengers.Where(p => p.ConnectingFlights.Any()).ToList();
-        //}
-        
-    
 
-       
 
-       
         //8. Frequent Flyer Stats
         public List<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
         {
@@ -709,38 +743,36 @@ namespace FlightManagementCompany.Service
 
 
         // 9. Maintanance Alert
-        //public IEnumerable<MaintenanceAlertDto> GetMaintenanceAlerts(DateTime startDate, DateTime endDate)
-        //{
-        //    var alerts = _flightRepository.GetAll() // get all flights
-        //        .Where(f => f.DepartureUtc.Date >= startDate.Date && 
-        //                    f.DepartureUtc.Date <= endDate.Date && 
-        //                    f.Aircraft != null && 
-        //                    f.Aircraft.AircraftMaintenances != null) // filter by date range and ensure Aircraft and its Maintenances are not null
-        //        .Select(f => new MaintenanceAlertDto
-        //        {
-        //            FlightNumber = f.FlightNumber,
-        //            AircraftTail = f.Aircraft?.TailNumber ?? "Unknown",
+        public List<MaintenanceAlertDto> GetMaintenanceAlerts()
+        {
+            const int maintenanceThresholdDays = 30;
+            var thresholdDate = DateTime.UtcNow.AddDays(-maintenanceThresholdDays);
 
-        //            //LastMaintenanceDate = f.Aircraft?.AircraftMaintenances?
-        //            //    .OrderByDescending(m => m.MaintenanceDate)
-        //            //    .Select(m => m.MaintenanceDate)
-        //            //    .FirstOrDefault(),
+            var alerts = _aircraftRepository.GetAll()
+                .Where(a => a.AircraftMaintenances.Any())
+                .Select(a => new
+                {
+                    Aircraft = a,
+                    LastMaintenance = a.AircraftMaintenances
+                                     .OrderByDescending(m => m.MaintenanceDate)
+                                     .FirstOrDefault(),
+                    LatestFlight = a.Flights.OrderByDescending(f => f.DepartureUtc).FirstOrDefault()
+                })
+                .Select(x => new MaintenanceAlertDto
+                {
+                    FlightId = x.LatestFlight?.FlightId ?? 0,
+                    FlightNumber = x.LatestFlight?.FlightNumber ?? "N/A",
+                    AircraftTail = x.Aircraft.TailNumber,
+                    LastMaintenanceDate = x.LastMaintenance?.MaintenanceDate ?? DateTime.MinValue,
+                    NextMaintenanceDueDate = (DateTime)(x.LastMaintenance != null? x.LastMaintenance.MaintenanceDate.AddDays(maintenanceThresholdDays): (DateTime?)null),
+                    IsDueForMaintenance = x.LastMaintenance == null ||
+                                         x.LastMaintenance.MaintenanceDate < thresholdDate
+                })
+                .Where(a => a.IsDueForMaintenance)
+                .ToList();
 
-        //            NextMaintenanceDueDate = f.Aircraft?.AircraftMaintenances?
-        //                .OrderBy(m => m.NextDueDate)
-        //                .Select(m => m.NextDueDate)
-        //                .FirstOrDefault(),
-
-        //            IsDueForMaintenance = f.Aircraft?.AircraftMaintenances?
-        //                .OrderBy(m => m.NextDueDate)
-        //                .Select(m => m.NextDueDate)
-        //                .FirstOrDefault() <= DateTime.UtcNow
-        //        })
-        //        .Where(a => a.IsDueForMaintenance == true) // only due maintenance
-        //        .ToList();
-
-        //    return alerts;
-        //}
+            return alerts;
+        }
 
 
         //10. Baggage Overweight Alerts
@@ -768,9 +800,7 @@ namespace FlightManagementCompany.Service
 
 
 
-        /*Complex Set/Partitioning Examples
-         Use Union to combine two passenger lists(VIP + FrequentFliers), Intersect for passengers present in both, Except for passengers who canceled.
-         Partition flights into pages(Skip, Take) for an admin UI.*/
+        
         // 11. Complex Set/Partitioning Examples
         //public List<PassengerDto> GetCombinedPassengerList()
         //{
@@ -879,22 +909,22 @@ Using historical bookings, project expected bookings for next week by simple ave
 
         // -------------------- Helper Function --------------------
         // ---------------------  seat map ---------------------
-        //        private static List<string> BuildSeatMap(int capacity)
-        //{
-        //    var seats = new List<string>(capacity);
-        //    if (capacity <= 0) return seats;
-        //    const int perRow = 6;
-        //    int rows = (int)Math.Ceiling(capacity / (double)perRow);
-        //    for (int r = 1; r <= rows; r++)
-        //    {
-        //        for (int s = 0; s < perRow; s++)
-        //        {
-        //            if (seats.Count >= capacity) break;
-        //            seats.Add($"{r}{(char)('A' + s)}");
-        //        }
-        //    }
-        //    return seats;
-        //}
+        private static List<string> BuildSeatMap(int capacity)
+        {
+            var seats = new List<string>(capacity);
+            if (capacity <= 0) return seats;
+            const int perRow = 6;
+            int rows = (int)Math.Ceiling(capacity / (double)perRow);
+            for (int r = 1; r <= rows; r++)
+            {
+                for (int s = 0; s < perRow; s++)
+                {
+                    if (seats.Count >= capacity) break;
+                    seats.Add($"{r}{(char)('A' + s)}");
+                }
+            }
+            return seats;
+        }
 
     }
 

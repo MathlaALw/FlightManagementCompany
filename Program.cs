@@ -1,11 +1,14 @@
 ﻿using FlightManagementCompany.Data;
 using FlightManagementCompany.Models;
 using FlightManagementCompany.Service;
+using Microsoft.Identity.Client;
 
 namespace FlightManagementCompany
 {
     public class Program
     {
+       
+
         static void Main(string[] args)
         {
             // Check if the database exists, if not create it
@@ -69,29 +72,254 @@ namespace FlightManagementCompany
                             dateInput = Console.ReadLine();
                         }
                         flightService.GetDailyFlightManifest(date);
-                        Console.WriteLine("Daily Flight Manifest for " + flightService);
+                        // display the daily flight manifest
+                        // Note: The actual display logic is not implemented here, assuming GetDailyFlightManifest handles it.
+                        // If you want to display the manifest, you can modify the GetDailyFlightManifest method to return a list of flights or print them directly.
+                        // Example: 
+                        var manifest = flightService.GetDailyFlightManifest(date);
+                        foreach (var flight in manifest)
+                        {
+                            //  Console.WriteLine($"FlightID :{flight.FlightId}, Flight Number : {flight.FlightNumber} , Departure: {flight.Origin}, Arrival: {flight.Destination}, Departure Time: {flight.DepUtc}, Arrival Time: {flight.ArrUtc} ,AircraftTail :{flight.AircraftTail}, ");
+                            Console.WriteLine("FlightID : " + flight.FlightId);
+                            Console.WriteLine("Flight Number : " + flight.FlightNumber);
+                            Console.WriteLine("Departure: " + flight.Origin);
+                            Console.WriteLine("Arrival: " + flight.Destination);
+                            Console.WriteLine("Departure Time: " + flight.DepUtc);
+                            Console.WriteLine("Arrival Time: " + flight.ArrUtc);
+                            Console.WriteLine("Aircraft Tail: " + flight.AircraftTail);
+                            Console.WriteLine("Passenger Count: " + flight.PassengerCount);
+                            Console.WriteLine("Total Baggage Kg: " + flight.TotalBaggageKg);
+                            Console.WriteLine("Crew Members:");
+                            Console.WriteLine("--------------------------------------------------");
+                            foreach (var crew in flight.Crew)
+                            {
+                                Console.WriteLine("Crew ID:"+crew.CrewId);
+                                Console.WriteLine("Crew Name: " + crew.Name);
+                                Console.WriteLine("Role: " + crew.Role);
+                                
+
+                            }
+
+                        }
+                        //Console.WriteLine("Daily Flight Manifest for " + flightService);
                         break;
                     case "2":
-                        // Add logic to add a new flight
+                        //Top Routes by Revenue
+                        Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");
+                        string? startDateInput = Console.ReadLine();
+                        DateTime startDate;
+                        while (!DateTime.TryParse(startDateInput, out startDate))
+                        {
+                            Console.WriteLine("Invalid date format. Please enter a valid start date (yyyy-MM-dd):");
+                            startDateInput = Console.ReadLine();
+                        }
+                        Console.WriteLine("Enter the End Date (yyyy-MM-dd):");
+                        string? endDateInput = Console.ReadLine();
+                        DateTime endDate;
+                        while (!DateTime.TryParse(endDateInput, out endDate) || endDate < startDate)
+                        {
+                            Console.WriteLine(endDate < startDate
+                                ? "End date must be after start date. Please enter a valid end date (yyyy-MM-dd):"
+                                : "Invalid date format. Please enter a valid end date (yyyy-MM-dd):");
+                            endDateInput = Console.ReadLine();
+                        }
+                        var topRoutes = flightService.GetRouteRevenue(startDate, endDate);
+                        if (topRoutes.Any())
+                        {
+                            Console.WriteLine("Top Routes by Revenue:");
+                            foreach (var route in topRoutes)
+                            {
+                                Console.WriteLine($"Route: {route.Origin} to {route.Destination}, Revenue: {route.Revenue:C}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No routes found for the specified date range.");
+                        }
                         break;
                     case "3":
-                        // Add logic to update a flight
+                        // On-Time Performance
+                        Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");
+                        string? otpStartDateInput = Console.ReadLine();
+                        DateTime otpStartDate;
+                        while (!DateTime.TryParse(otpStartDateInput, out otpStartDate))
+                        {
+                            Console.WriteLine("Invalid date format. Please enter a valid start date (yyyy-MM-dd):");
+                            otpStartDateInput = Console.ReadLine();
+                        }
+                        Console.WriteLine("Enter the End Date (yyyy-MM-dd):");
+                        string? otpEndDateInput = Console.ReadLine();
+                        DateTime otpEndDate;
+
+                        while (!DateTime.TryParse(otpEndDateInput, out otpEndDate) || otpEndDate < otpStartDate)
+                        {
+                            Console.WriteLine(otpEndDate < otpStartDate
+                                ? "End date must be after start date. Please enter a valid end date (yyyy-MM-dd):"
+                                : "Invalid date format. Please enter a valid end date (yyyy-MM-dd):");
+                            otpEndDateInput = Console.ReadLine();
+                        }
+                        var onTimePerformance = flightService.GetOnTimePerformance(otpStartDate, otpEndDate);
+                       
+                            Console.WriteLine("On-Time Performance:");
+                       
+
+                            Console.WriteLine("On-Time Performance:");
+                            Console.WriteLine($"Total Flights: {onTimePerformance.TotalFlights}");
+                            Console.WriteLine($"On-Time Flights: {onTimePerformance.OnTimeFlights}");
+                            Console.WriteLine($"On-Time Percentage: {onTimePerformance.OnTimePercentage:P2}");
+                            Console.WriteLine($"Delayed Flights: {onTimePerformance.DelayedFlights}");
+                            Console.WriteLine("--------------------------------------------------");
+
+
                         break;
                     case "4":
-                        // Add logic to delete a flight
+                        // Seat Occupancy Heatmap
+                        Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");
+                        string? heatmapStartDateInput = Console.ReadLine();
+                        DateTime heatmapStartDate;
+                        while (!DateTime.TryParse(heatmapStartDateInput, out heatmapStartDate))
+                        {
+                            Console.WriteLine("Invalid date format. Please enter a valid start date (yyyy-MM-dd):");
+                            heatmapStartDateInput = Console.ReadLine();
+                        }
+                        Console.WriteLine("Enter the End Date (yyyy-MM-dd):");
+                        string? heatmapEndDateInput = Console.ReadLine();
+                        DateTime heatmapEndDate;
+                        while (!DateTime.TryParse(heatmapEndDateInput, out heatmapEndDate) || heatmapEndDate < heatmapStartDate)
+                        {
+                            Console.WriteLine(heatmapEndDate < heatmapStartDate
+                                ? "End date must be after start date. Please enter a valid end date (yyyy-MM-dd):"
+                                : "Invalid date format. Please enter a valid end date (yyyy-MM-dd):");
+                            heatmapEndDateInput = Console.ReadLine();
+                        }
+                        var heatmapData = flightService.GetSeatOccupancyHeatmap(heatmapStartDate, heatmapEndDate);
+                        
+                            Console.WriteLine("Seat Occupancy Heatmap:");
+                            foreach (var data in heatmapData)
+                            {
+                           
+                            Console.WriteLine($"Aircraft Tail: {data.AircraftTail}, Seat Number: {data.SeatNumber}, Times Occupied: {data.TimesOccupied}");
+                        }
+                        Console.WriteLine("--------------------------------------------------");
+                
+
+
+
+
+
                         break;
+
                     case "5":
+                        
                         // Available seats logic is already implemented above
+                        Console.WriteLine("Enter the flight ID to check available seats:");
+                        int flightId;
+                        string? flightIdInput = Console.ReadLine(); // Allow null input
+                        while (string.IsNullOrEmpty(flightIdInput) || !int.TryParse(flightIdInput, out flightId))
+                        {
+                            Console.WriteLine("Invalid flight ID. Please enter a valid flight ID:");
+                            flightIdInput = Console.ReadLine();
+                        }
+                        var availableSeats = flightService.GetAvailableSeatsForFlight(flightId);
+                        if (availableSeats.Any())
+                        {
+                            Console.WriteLine($"Available seats on flight {flightId}: {string.Join(", ", availableSeats)}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"No available seats found or flight with ID {flightId} does not exist.");
+                        }
+
                         break;
-                    case "6":
+
+                        case "6":
+                        //Crew Scheduling Conflicts
+                        Console.WriteLine("Crew Scheduling Conflicts");
+                       flightService.GetCrewSchedulingConflicts();
+                        
+                        Console.WriteLine("Crew Scheduling Conflicts:");
+                        var conflicts = flightService.GetCrewSchedulingConflicts();
+                        if (conflicts.Any())
+                        {
+                            foreach (var conflict in conflicts)
+                            {
+                                
+                                Console.WriteLine($"Crew ID: {conflict.CrewId}, Crew Name: {conflict.CrewName}, Crew Licence: {conflict.CrewLicence}");
+                                Console.WriteLine($"Flight A ID: {conflict.FlightAId}, Flight B ID: {conflict.FlightBId}");
+                                Console.WriteLine($"Flight A Departure: {conflict.FlightADep}, Flight B Departure: {conflict.FlightBDep}");
+                                Console.WriteLine("--------------------------------------------------");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No scheduling conflicts found.");
+                        }
+
+                        break;
+
+                    case "7":
+                        Console.WriteLine("Passengers with Connections");
+                        Console.WriteLine("Enter the flight ID to find passengers with connections:");
+                        int flightIdForConnections;
+                        string? flightIdForConnectionsInput = Console.ReadLine(); // Allow null input
+                        while (string.IsNullOrEmpty(flightIdForConnectionsInput) || !int.TryParse(flightIdForConnectionsInput, out flightIdForConnections))
+                        {
+                            Console.WriteLine("Invalid flight ID. Please enter a valid flight ID:");
+                            flightIdForConnectionsInput = Console.ReadLine();
+                        }
+                        var passengersWithConnections = flightService.GetPassengersWithConnections(flightIdForConnections);
+                        if (passengersWithConnections.Any())
+                        {
+                            Console.WriteLine($"Passengers with connections on flight {flightIdForConnections}:");
+                            foreach (var passenger in passengersWithConnections)
+                            {
+                                Console.WriteLine($"Passenger ID: {passenger.PassengerId}, Name: {passenger.Name}, Connection Flight ID: {passenger.ConnectingFlights}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"No passengers with connections found for flight {flightIdForConnections}.");
+                        }
+                        break;
+
+                    case "0":
                         return; // Exit the application
                     default:
                         Console.WriteLine("Invalid choice, please try again.");
                         break;
                 }
             }
-
-
         }
+
+
+
+
+        // Common Function 
+        // Get start and end date from user and return them as a tuple
+        //public void GetStartAndEndDate(out DateTime startDate, out DateTime endDate)
+        //{
+        //    // Get start date
+        //    Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");
+        //    string? startDateInput = Console.ReadLine();
+        //    while (string.IsNullOrEmpty(startDateInput) || !DateTime.TryParse(startDateInput, out startDate))
+        //    {
+        //        Console.WriteLine("Invalid date format. Please enter a valid start date (yyyy-MM-dd):");
+        //        startDateInput = Console.ReadLine();
+        //    }
+
+        //    // Get end date
+        //    Console.WriteLine("Enter the End Date (yyyy-MM-dd):");
+        //    string? endDateInput = Console.ReadLine();
+        //    while (string.IsNullOrEmpty(endDateInput) || !DateTime.TryParse(endDateInput, out endDate) || endDate < startDate)
+        //    {
+        //        Console.WriteLine(endDate < startDate
+        //            ? "End date must be after start date. Please enter a valid end date (yyyy-MM-dd):"
+        //            : "Invalid date format. Please enter a valid end date (yyyy-MM-dd):");
+        //        endDateInput = Console.ReadLine();
+        //    }
+        //}
+
+
+
     }
 }

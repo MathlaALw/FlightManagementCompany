@@ -39,9 +39,17 @@ namespace FlightManagementCompany.Repository
         // Get Flights by Date Range
         public IEnumerable<Flight> GetFlightsByDateRange(DateTime from, DateTime to)
         {
+            //return _context.Flights
+            //    .Where(f => f.DepartureUtc >= from && f.ArrivalUtc <= to)
+            //    .ToLi
             return _context.Flights
-                .Where(f => f.DepartureUtc >= from && f.ArrivalUtc <= to)
+                .Include(f => f.Tickets)
+                .Include(f => f.Route).ThenInclude(r => r.OriginAirport)
+                .Include(f => f.Route).ThenInclude(r => r.DestinationAirport)
+                .Where(f => f.DepartureUtc.Date >= from.Date &&
+                            f.DepartureUtc.Date <= to.Date)
                 .ToList();
+        
         }
 
         // Get flight by Route

@@ -10,8 +10,8 @@ namespace FlightManagementCompany.Models
 {
     public class AircraftMaintenance
     {
+        internal object NextDueDate;
 
-       
         public int MaintenanceId { get; set; }
 
        
