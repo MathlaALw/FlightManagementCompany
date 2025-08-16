@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Schema;
@@ -15,7 +16,7 @@ namespace FlightManagementCompany.Service
     public class FlightService
     {
 
-        
+
         private readonly FlightRepository _flightRepository;
         private readonly AircraftRepository _aircraftRepository;
         private readonly RouteRepository _routeRepository;
@@ -174,7 +175,7 @@ namespace FlightManagementCompany.Service
             }
 
 
-          
+
 
             //6. Aircraft Maintenance data creation
             if (!_aircraftMaintenanceRepository.GetAll().Any())
@@ -278,8 +279,8 @@ namespace FlightManagementCompany.Service
 
             //9. Flight Crew data creation
             if (!_flightCrewRepository.GetAll().Any())
-                {
-                    var flightCrews = new List<FlightCrew>
+            {
+                var flightCrews = new List<FlightCrew>
                     {
                         new FlightCrew { FlightId = 19, CrewId = 1, RoleOnFlight = "FlightAttendant" },
                         new FlightCrew { FlightId = 18, CrewId = 2, RoleOnFlight = "Pilot" },
@@ -297,11 +298,11 @@ namespace FlightManagementCompany.Service
                         new FlightCrew { FlightId = 14, CrewId = 4, RoleOnFlight = "Pilot" },
                         new FlightCrew { FlightId = 15, CrewId = 5, RoleOnFlight = "CoPilot" }
                     };
-                    foreach (var flightCrew in flightCrews)
-                    {
-                        _flightCrewRepository.Add(flightCrew);
-                    }
+                foreach (var flightCrew in flightCrews)
+                {
+                    _flightCrewRepository.Add(flightCrew);
                 }
+            }
 
             //10. Ticket data creation
             if (!_ticketRepository.GetAll().Any())
@@ -454,7 +455,7 @@ namespace FlightManagementCompany.Service
                 .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date && t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
                 .GroupBy(t => new // group by Aircraft Tail and Seat Number
                 {
-                    t.Flight.Aircraft.TailNumber, 
+                    t.Flight.Aircraft.TailNumber,
                     t.SeatNumber
                 })
                 .Select(g => new SeatOccupancyDto // transform groups into DTOs
@@ -472,41 +473,41 @@ namespace FlightManagementCompany.Service
         // 5. Find Available Seats for a Flight
         //public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
         //{
-            //var flight = _flightRepository.GetById(flightId); // get flight by ID  
-            //if (flight == null) return Enumerable.Empty<string>(); // return empty if flight not found  
+        //var flight = _flightRepository.GetById(flightId); // get flight by ID  
+        //if (flight == null) return Enumerable.Empty<string>(); // return empty if flight not found  
 
-            ////return availableSeats; // return the list of available seats  
-            //var capacity = flight.Aircraft.Capacity; // get aircraft capacity
-            //// check if capacity is valid
-            //if (capacity <= 0) return Enumerable.Empty<string>(); // return empty if capacity is invalid
-            //var seatMap = BuildSeatMap(capacity); // get aircraft seat map
-
-
-            //var bookedSeats = _ticketRepository.GetAll() // get all tickets from the repository
-            //    .Where(t => t.FlightId == flightId) // filter tickets by flight ID
-            //    .Select(t => t.SeatNumber) // select booked seat numbers
-            //    .ToList(); // convert to list
-
-            //var availableSeats = seatMap // use the seat map to generate seat numbers
-            //    .Where(seat => !bookedSeats.Contains(seat)) // filter out booked seats
-            //    .ToList(); // convert to list
+        ////return availableSeats; // return the list of available seats  
+        //var capacity = flight.Aircraft.Capacity; // get aircraft capacity
+        //// check if capacity is valid
+        //if (capacity <= 0) return Enumerable.Empty<string>(); // return empty if capacity is invalid
+        //var seatMap = BuildSeatMap(capacity); // get aircraft seat map
 
 
-            ////return availableSeats; // return the list of available seats
-            //var flight = _flightRepository.GetById(flightId); // get flight by ID
-            //if (flight == null) return Enumerable.Empty<string>(); // return empty if flight not found
-            //var capacity = flight.Aircraft.Capacity; // get aircraft capacity
-            //// check if capacity is valid
-            //if (capacity <= 0) return Enumerable.Empty<string>(); // return empty if capacity is invalid
-            //var seatMap = BuildSeatMap(capacity); // get aircraft seat map
-            //var bookedSeats = _ticketRepository.GetAll() // get all tickets from the repository
-            //    .Where(t => t.FlightId == flightId) // filter tickets by flight ID
-            //    .Select(t => t.SeatNumber) // select booked seat numbers
-            //    .ToList(); // convert to list
-            //var availableSeats = seatMap // use the seat map to generate seat numbers
-            //    .Where(seat => !bookedSeats.Contains(seat)) // filter out booked seats
-            //    .ToList(); // convert to list
-            //return availableSeats; // return the list of available seats
+        //var bookedSeats = _ticketRepository.GetAll() // get all tickets from the repository
+        //    .Where(t => t.FlightId == flightId) // filter tickets by flight ID
+        //    .Select(t => t.SeatNumber) // select booked seat numbers
+        //    .ToList(); // convert to list
+
+        //var availableSeats = seatMap // use the seat map to generate seat numbers
+        //    .Where(seat => !bookedSeats.Contains(seat)) // filter out booked seats
+        //    .ToList(); // convert to list
+
+
+        ////return availableSeats; // return the list of available seats
+        //var flight = _flightRepository.GetById(flightId); // get flight by ID
+        //if (flight == null) return Enumerable.Empty<string>(); // return empty if flight not found
+        //var capacity = flight.Aircraft.Capacity; // get aircraft capacity
+        //// check if capacity is valid
+        //if (capacity <= 0) return Enumerable.Empty<string>(); // return empty if capacity is invalid
+        //var seatMap = BuildSeatMap(capacity); // get aircraft seat map
+        //var bookedSeats = _ticketRepository.GetAll() // get all tickets from the repository
+        //    .Where(t => t.FlightId == flightId) // filter tickets by flight ID
+        //    .Select(t => t.SeatNumber) // select booked seat numbers
+        //    .ToList(); // convert to list
+        //var availableSeats = seatMap // use the seat map to generate seat numbers
+        //    .Where(seat => !bookedSeats.Contains(seat)) // filter out booked seats
+        //    .ToList(); // convert to list
+        //return availableSeats; // return the list of available seats
         //}
         public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
         {
@@ -522,7 +523,6 @@ namespace FlightManagementCompany.Service
         }
 
 
-        
 
 
 
@@ -535,44 +535,8 @@ namespace FlightManagementCompany.Service
 
 
 
-        //5. Frequent Flyer Stats
-        public IEnumerable<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
-        {
-            var stats = _ticketRepository.GetAll() // get all tickets from the repository
-                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
-                            t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
-                .GroupBy(t => new // group by PassengerId and FullName
-                {
-                    t.Booking.Passenger.PassengerId, // get Passenger ID
-                    t.Booking.Passenger.FullName // get Passenger Full Name
-                }) 
-                .Select(g => new FrequentFlyerDto // class to hold frequent flyer statistics
-                {
-                    PassengerId = g.Key.PassengerId, // get Passenger ID -- Key is anonymous type with PassengerId and FullName (grouping key)
-                    PassengerName = g.Key.FullName, // get Passenger Full Name
-                    FlightsTaken = g.Select(t => t.FlightId).Distinct().Count() // Removes duplicates and counts unique flights taken by the passenger
-                                                                                // g itself is an enumeration of all Ticket rows that belong to that passenger for the filtered date range.
-                })
-                .OrderByDescending(f => f.FlightsTaken) // order by number of flights taken descending
-                .ToList(); // execute the query and get the results in a list
 
-            return stats; // return the list of frequent flyer statistics
-        }
-
-        //6. Average Load Factor
-        public double GetAverageLoadFactor(DateTime startDate, DateTime endDate)
-        {
-            var flights = _flightRepository.GetAll() // get all flights from the repository
-                .Where(f => f.DepartureUtc.Date >= startDate.Date && f.DepartureUtc.Date <= endDate.Date) // filter flights by date range
-                .ToList(); // execute the query and get the results in a list
-            if (!flights.Any()) return 0; // return 0 if no flights found
-            var totalSeats = flights.Sum(f => f.Aircraft.Capacity); // sum of all aircraft seat capacities
-            var totalTicketsSold = flights.Sum(f => f.Tickets.Count()); // sum of all tickets sold for the flights
-            return (double)totalTicketsSold / totalSeats * 100; // calculate average load factor as percentage
-        }
-
-
-        //7. Crew Scheduling Conflicts
+        //6. Crew Scheduling Conflicts
 
         public IEnumerable<CrewConflictDto> GetCrewSchedulingConflicts()
         {
@@ -588,7 +552,7 @@ namespace FlightManagementCompany.Service
                         CrewId = fc.CrewMember.CrewId, // get Crew ID
                         FullName = fc.CrewMember.FullName // get Crew Member Full Name
                     }).ToList() // convert to list
-                    
+
                 })
                 .ToList(); // execute the query and get the results in a list
 
@@ -635,7 +599,7 @@ namespace FlightManagementCompany.Service
         }
 
 
-        //8. Passengers with Connections
+        //7. Passengers with Connections
         //public IEnumerable<PassengerConnectionDto> GetPassengersWithConnections(double maxHoursBetween)
         //{
         //    var result = _passengerRepository.GetAll() // get all passengers from the repository
@@ -680,7 +644,101 @@ namespace FlightManagementCompany.Service
         //}
 
 
-        // 9. 
+
+        //public List<PassengerConnectionDto> GetPassengersWithConnections()
+        //{
+        //    var passengers = _passengerRepository.GetAll()
+        //        .Where(p => _bookingRepository.GetBookingsByPassenger(p.PassengerId).Count() >= 2)
+        //        .Select(p => new PassengerConnectionDto
+        //        {
+        //            PassengerId = p.PassengerId,
+        //            Name = p.FullName,
+        //            ConnectingFlights =
+        //                _bookingRepository.GetBookingsByPassenger(p.PassengerId)
+        //                    .SelectMany(b => b.FlightSegments
+        //                        .OrderBy(fs => fs.Flight.DepartureUtc)
+        //                        .Zip(
+        //                            b.FlightSegments.OrderBy(fs => fs.Flight.DepartureUtc).Skip(1),
+        //                            (prev, next) => new ConnectionLegDto
+        //                            {
+        //                                FromFlightId = prev.Flight.FlightId,
+        //                                FromArrival = prev.Flight.ArrivalUtc,
+        //                                ToFlightId = next.Flight.FlightId,
+        //                                ToDeparture = next.Flight.DepartureUtc,
+        //                                HoursBetween = (next.Flight.DepartureUtc - prev.Flight.ArrivalUtc).TotalHours
+        //                            }))
+        //                    .Where(cl => cl.HoursBetween >= 0 && cl.HoursBetween <= 24) // Assuming max 24 hours between connections
+        //                    .ToList()
+        //        })
+        //        .ToList();
+
+        //    // Filter out passengers with no connecting flights
+        //    return passengers.Where(p => p.ConnectingFlights.Any()).ToList();
+        //}
+        
+    
+
+       
+
+       
+        //8. Frequent Flyer Stats
+        public IEnumerable<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
+        {
+            var stats = _ticketRepository.GetAll() // get all tickets from the repository
+                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
+                            t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
+                .GroupBy(t => new // group by PassengerId and FullName
+                {
+                    t.Booking.Passenger.PassengerId, // get Passenger ID
+                    t.Booking.Passenger.FullName // get Passenger Full Name
+                })
+                .Select(g => new FrequentFlyerDto // class to hold frequent flyer statistics
+                {
+                    PassengerId = g.Key.PassengerId, // get Passenger ID -- Key is anonymous type with PassengerId and FullName (grouping key)
+                    PassengerName = g.Key.FullName, // get Passenger Full Name
+                    FlightsTaken = g.Select(t => t.FlightId).Distinct().Count() // Removes duplicates and counts unique flights taken by the passenger
+                                                                                // g itself is an enumeration of all Ticket rows that belong to that passenger for the filtered date range.
+                })
+                .OrderByDescending(f => f.FlightsTaken) // order by number of flights taken descending
+                .ToList(); // execute the query and get the results in a list
+
+            return stats; // return the list of frequent flyer statistics
+        }
+
+
+        // 9. Maintanance Alert
+        //public IEnumerable<MaintenanceAlertDto> GetMaintenanceAlerts(DateTime startDate, DateTime endDate)
+        //{
+        //    var alerts = _flightRepository.GetAll() // get all flights
+        //        .Where(f => f.DepartureUtc.Date >= startDate.Date && 
+        //                    f.DepartureUtc.Date <= endDate.Date && 
+        //                    f.Aircraft != null && 
+        //                    f.Aircraft.AircraftMaintenances != null) // filter by date range and ensure Aircraft and its Maintenances are not null
+        //        .Select(f => new MaintenanceAlertDto
+        //        {
+        //            FlightNumber = f.FlightNumber,
+        //            AircraftTail = f.Aircraft?.TailNumber ?? "Unknown",
+
+        //            //LastMaintenanceDate = f.Aircraft?.AircraftMaintenances?
+        //            //    .OrderByDescending(m => m.MaintenanceDate)
+        //            //    .Select(m => m.MaintenanceDate)
+        //            //    .FirstOrDefault(),
+
+        //            NextMaintenanceDueDate = f.Aircraft?.AircraftMaintenances?
+        //                .OrderBy(m => m.NextDueDate)
+        //                .Select(m => m.NextDueDate)
+        //                .FirstOrDefault(),
+
+        //            IsDueForMaintenance = f.Aircraft?.AircraftMaintenances?
+        //                .OrderBy(m => m.NextDueDate)
+        //                .Select(m => m.NextDueDate)
+        //                .FirstOrDefault() <= DateTime.UtcNow
+        //        })
+        //        .Where(a => a.IsDueForMaintenance == true) // only due maintenance
+        //        .ToList();
+
+        //    return alerts;
+        //}
 
 
 
