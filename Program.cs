@@ -2,6 +2,7 @@
 using FlightManagementCompany.Models;
 using FlightManagementCompany.Service;
 using Microsoft.Identity.Client;
+using System.Globalization;
 
 namespace FlightManagementCompany
 {
@@ -58,51 +59,65 @@ namespace FlightManagementCompany
                 Console.WriteLine("12. Conversion Operators Demonstration");
                 Console.WriteLine("13. Window-like Operation (running totals)");
                 Console.WriteLine("14. Forecasting (simple)");
-                Console.WriteLine("6. Exit");
+                Console.WriteLine("0. Exit");
                 string? choice = Console.ReadLine();
                 switch (choice)
                 {
                     case "1":
-                        Console.WriteLine("Enter the Date (yyyy-MM-dd) to view the daily flight manifest:");
+
+                        Console.WriteLine("Enter the date (yyyy-MM-dd) to view the daily flight manifest:");
                         string? dateInput = Console.ReadLine();
-                        DateTime date;
-                        while (!DateTime.TryParse(dateInput, out date))
+
+                        DateTime dateUtc; // we'll treat it as a UTC calendar day
+                        while (!DateTime.TryParse(dateInput, out dateUtc))
                         {
-                            Console.WriteLine("Invalid date format. Please enter a valid date (yyyy-MM-dd):");
+                            Console.WriteLine("Invalid date format. Please enter a valid  date (yyyy-MM-dd):");
                             dateInput = Console.ReadLine();
                         }
-                        flightService.GetDailyFlightManifest(date);
-                        // display the daily flight manifest
-                        // Note: The actual display logic is not implemented here, assuming GetDailyFlightManifest handles it.
-                        // If you want to display the manifest, you can modify the GetDailyFlightManifest method to return a list of flights or print them directly.
-                        // Example: 
-                        var manifest = flightService.GetDailyFlightManifest(date);
+
+                        // Call your service
+                        var manifest = flightService.GetDailyFlightManifest(dateUtc);
+
+                        // Helpful sanity line
+                        Console.WriteLine($"\nFlights found for {dateUtc:yyyy-MM-dd} (UTC): {manifest.Count}\n");
+
+                        if (manifest.Count == 0)
+                        {
+                            Console.WriteLine("No flights depart on this date.");
+                            return;
+                        }
+
                         foreach (var flight in manifest)
                         {
-                            //  Console.WriteLine($"FlightID :{flight.FlightId}, Flight Number : {flight.FlightNumber} , Departure: {flight.Origin}, Arrival: {flight.Destination}, Departure Time: {flight.DepUtc}, Arrival Time: {flight.ArrUtc} ,AircraftTail :{flight.AircraftTail}, ");
-                            Console.WriteLine("FlightID : " + flight.FlightId);
-                            Console.WriteLine("Flight Number : " + flight.FlightNumber);
-                            Console.WriteLine("Departure: " + flight.Origin);
-                            Console.WriteLine("Arrival: " + flight.Destination);
-                            Console.WriteLine("Departure Time: " + flight.DepUtc);
-                            Console.WriteLine("Arrival Time: " + flight.ArrUtc);
-                            Console.WriteLine("Aircraft Tail: " + flight.AircraftTail);
-                            Console.WriteLine("Passenger Count: " + flight.PassengerCount);
-                            Console.WriteLine("Total Baggage Kg: " + flight.TotalBaggageKg);
-                            Console.WriteLine("Crew Members:");
                             Console.WriteLine("--------------------------------------------------");
-                            foreach (var crew in flight.Crew)
+                            Console.WriteLine($"FlightID        : {flight.FlightId}");
+                            Console.WriteLine($"Flight Number   : {flight.FlightNumber}");
+                            Console.WriteLine($"Departure (IATA): {flight.Origin}");
+                            Console.WriteLine($"Arrival (IATA)  : {flight.Destination}");
+                            Console.WriteLine($"Departure Time  : {flight.DepUtc:yyyy-MM-dd HH:mm} (UTC)");
+                            Console.WriteLine($"Arrival Time    : {flight.ArrUtc:yyyy-MM-dd HH:mm} (UTC)");
+                            Console.WriteLine($"Aircraft Tail   : {flight.AircraftTail}");
+                            Console.WriteLine($"Passenger Count : {flight.PassengerCount}");
+                            Console.WriteLine($"Total BaggageKg : {flight.TotalBaggageKg}");
+                            Console.WriteLine("Crew Members    :");
+
+                            if (flight.Crew == null || flight.Crew.Count == 0)
                             {
-                                Console.WriteLine("Crew ID:"+crew.CrewId);
-                                Console.WriteLine("Crew Name: " + crew.Name);
-                                Console.WriteLine("Role: " + crew.Role);
-                                
-
+                                Console.WriteLine("  (none)");
                             }
-
+                            else
+                            {
+                                foreach (var crew in flight.Crew)
+                                {
+                                    // If your CrewDto doesn't have CrewId, remove this line.
+                                    // Console.WriteLine($"  Crew ID : {crew.CrewId}");
+                                    Console.WriteLine($"  Name    : {crew.Name}");
+                                }
+                            }
                         }
-                        //Console.WriteLine("Daily Flight Manifest for " + flightService);
-                        break;
+
+                                    //Console.WriteLine("Daily Flight Manifest for " + flightService);
+                                    break;
                     case "2":
                         //Top Routes by Revenue
                         Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");

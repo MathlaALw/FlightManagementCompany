@@ -378,85 +378,161 @@ namespace FlightManagementCompany.Service
         //1. Daily Flight Manifest 
         public List<FlightManifestDto> GetDailyFlightManifest(DateTime dateUtc)
         {
-            // Change IEnumerable<Flight> to IQueryable<Flight> to enable EF Core extensions like Include.
-            var flights = _flightRepository.GetAll()
-                .AsQueryable() // Convert IEnumerable to IQueryable to use EF Core methods. 
-                .Include(f => f.Route)
-                    .ThenInclude(r => r.OriginAirport)
-                .Include(f => f.Route)
-                    .ThenInclude(r => r.DestinationAirport)
-                .Include(f => f.Aircraft)
-                .Include(f => f.Tickets)
-                    .ThenInclude(t => t.Baggages)
-                .Include(f => f.FlightCrew)
-                    .ThenInclude(fc => fc.CrewMember)
-                .Where(f => f.DepartureUtc.Date == dateUtc.Date)
-                .Select(f => new FlightManifestDto
+            var start = dateUtc.Date;
+            var end = start.AddDays(1);
+
+            var flights = _flightRepository.GetAll()?
+                .Where(f => f.DepartureUtc >= start && f.DepartureUtc < end)
+                .ToList() ?? new List<Flight>();
+
+            if (flights.Count == 0) return new List<FlightManifestDto>();
+
+            // Prefetch once (simple + avoids repeated repo calls)
+            var tickets = _ticketRepository.GetAll()?.ToList() ?? new List<Ticket>();
+            var baggages = _baggageRepository.GetAll()?.ToList() ?? new List<Baggage>();
+            var crews = _flightCrewRepository.GetAll()?.ToList() ?? new List<FlightCrew>();
+
+            var result = new List<FlightManifestDto>();
+
+            // For fast baggage lookup
+            var baggageByTicketId = baggages.GroupBy(b => b.TicketId)
+                                            .ToDictionary(g => g.Key, g => g.Sum(x => x.WeightKg));
+
+            foreach (var f in flights)
+            {
+                // Origin/Destination via route+airport IDs
+                string origin = "N/A", dest = "N/A", tail = "N/A";
+
+                if (f.RouteId > 0)
+                {
+                    var route = _routeRepository.GetById(f.RouteId);
+                    if (route != null)
+                    {
+                        var o = _airportRepository.GetById(route.OriginAirportId);
+                        var d = _airportRepository.GetById(route.DestinationAirportId);
+                        origin = o?.IATA ?? "N/A";
+                        dest = d?.IATA ?? "N/A";
+                    }
+                }
+
+                if (f.AircraftId > 0)
+                {
+                    var ac = _aircraftRepository.GetById(f.AircraftId);
+                    tail = ac?.TailNumber ?? "N/A";
+                }
+
+                var flightTickets = tickets.Where(t => t.FlightId == f.FlightId).ToList();
+                int passengerCount = flightTickets.Count;
+
+                decimal totalBaggageKg = 0;
+                if (passengerCount > 0)
+                {
+                    foreach (var t in flightTickets)
+                        totalBaggageKg += baggageByTicketId.TryGetValue(t.TicketId, out var kg) ? kg : 0;
+                }
+
+                var flightCrews = crews.Where(c => c.FlightId == f.FlightId).ToList();
+                var crewDtos = flightCrews.Select(c => new CrewDto
+                {
+                    Name = c.CrewMember?.FullName ?? "N/A",
+                    Role = c.RoleOnFlight ?? "N/A"
+                }).ToList();
+
+                result.Add(new FlightManifestDto
                 {
                     FlightId = f.FlightId,
                     FlightNumber = f.FlightNumber,
                     DepUtc = f.DepartureUtc,
                     ArrUtc = f.ArrivalUtc,
-                    Origin = f.Route != null && f.Route.OriginAirport != null
-                        ? f.Route.OriginAirport.IATA
-                        : "N/A",
-                    Destination = f.Route != null && f.Route.DestinationAirport != null
-                        ? f.Route.DestinationAirport.IATA
-                        : "N/A",
-                    AircraftTail = f.Aircraft != null
-                        ? f.Aircraft.TailNumber
-                        : "N/A",
-                    PassengerCount = f.Tickets != null
-                        ? f.Tickets.Count()
-                        : 0,
-                    TotalBaggageKg = f.Tickets != null
-                        ? f.Tickets
-                            .Where(t => t.Baggages != null)
-                            .SelectMany(t => t.Baggages)
-                            .Sum(b => b.WeightKg)
-                        : 0,
-                    Crew = f.FlightCrew != null
-                        ? f.FlightCrew
-                            .Where(fc => fc.CrewMember != null)
-                            .Select(fc => new CrewDto
-                            {
-                                Name = fc.CrewMember.FullName,
-                                Role = fc.RoleOnFlight
-                            })
-                            .ToList()
-                        : new List<CrewDto>()
-                })
-                .ToList();
+                    Origin = origin,
+                    Destination = dest,
+                    AircraftTail = tail,
+                    PassengerCount = passengerCount,
+                    TotalBaggageKg = totalBaggageKg,
+                    Crew = crewDtos
+                });
+            }
 
-            return flights;
+            return result;
         }
         //2. Top Routes by Revenue
 
         public IEnumerable<RouteRevenueDto> GetRouteRevenue(DateTime startDate, DateTime endDate)
         {
-            var result = _flightRepository.GetFlightsByDateRange(startDate, endDate) // already filters by date
-                .SelectMany(f => f.Tickets, (f, t) => new { f, t })
-                .Where(ft => ft.t.Fare != null) // ensures no null fares
-                .GroupBy(ft => new
+            // Normalize to [start, end) — end exclusive
+            var start = startDate.Date;
+            var end = endDate.Date.AddDays(1);
+
+            // 1) Pull flights in the window
+            var flights = _flightRepository.GetFlightsByDateRange(start, end) ?? Enumerable.Empty<Flight>();
+            var flightIds = flights.Select(f => f.FlightId).ToHashSet();
+
+            if (flightIds.Count == 0) return Enumerable.Empty<RouteRevenueDto>();
+
+            // 2) Pull tickets once and filter by those flights
+            var tickets = _ticketRepository.GetAll() ?? Enumerable.Empty<Ticket>();
+            var ticketsInRange = tickets.Where(t => flightIds.Contains(t.FlightId) && t.Fare != null).ToList();
+            if (ticketsInRange.Count == 0) return Enumerable.Empty<RouteRevenueDto>();
+
+            // 3) Build a lookup FlightId -> RouteId
+            var flightToRoute = flights
+                .Where(f => f.RouteId > 0)
+                .ToDictionary(f => f.FlightId, f => f.RouteId); 
+
+            // 4) Pull all routes (or a targeted call per needed RouteId if you prefer)
+            //    To stay simple and efficient, fetch just the needed routes:
+            var routeIds = flightToRoute.Values.Distinct().ToList();
+            var routes = routeIds.Select(rid => _routeRepository.GetById(rid))
+                                 .Where(r => r != null)
+                                 .ToDictionary(r => r.RouteId);
+
+            // 5) For airport codes, fetch by ID on demand (cache results)
+            var airportCache = new Dictionary<int, Airport>();
+            string Iata(int airportId)
+            {
+                if (airportId <= 0) return "N/A";
+                if (!airportCache.TryGetValue(airportId, out var ap))
                 {
-                    ft.f.Route.RouteId,
-                    Origin = ft.f.Route.OriginAirport.IATA,
-                    Destination = ft.f.Route.DestinationAirport.IATA
-                })
+                    ap = _airportRepository.GetById(airportId);
+                    if (ap != null) airportCache[airportId] = ap;
+                }
+                return ap?.IATA ?? "N/A";
+            }
+
+  
+
+            var query =
+               from t in ticketsInRange
+               where flightToRoute.ContainsKey(t.FlightId)
+               let routeId = flightToRoute[t.FlightId]
+               where routes.ContainsKey(routeId)
+               let route = routes[routeId]
+               select new
+               {
+                   RouteId = route.RouteId,
+                   Origin = Iata(route.OriginAirportId),
+                   Dest = Iata(route.DestinationAirportId),
+
+                   Fare = t.Fare != null ? t.Fare : 0m // Ensure Fare is not null by explicitly checking
+               };
+
+            var grouped = query
+                .GroupBy(x => new { x.RouteId, x.Origin, x.Dest })
                 .Select(g => new RouteRevenueDto
                 {
                     RouteId = g.Key.RouteId,
                     Origin = g.Key.Origin,
-                    Destination = g.Key.Destination,
-                    Revenue = g.Sum(ft => ft.t.Fare) ,// sum of fares for the route
+                    Destination = g.Key.Dest,
+                    Revenue = g.Sum(x => x.Fare),
                     SeatsSold = g.Count(),
-                    AvgFare = g.Average(ft => ft.t.Fare) // average fare for the route
+                    AvgFare = g.Average(x => x.Fare)
                 })
                 .OrderByDescending(r => r.Revenue)
                 .ToList();
 
-            return result;
+            return grouped;
         }
+
 
 
 
@@ -473,7 +549,7 @@ namespace FlightManagementCompany.Service
 
             var totalFlights = flights.Count;
 
-            // Example: counting "on-time" flights as Landed without delay, or still Scheduled
+            // counting "on-time" flights as Landed without delay, or still Scheduled
             var onTimeFlights = flights.Count(f =>
                 f.Status == FlightStatus.Landed || f.Status == FlightStatus.Scheduled);
 
@@ -492,28 +568,52 @@ namespace FlightManagementCompany.Service
         //4. Seat Occupancy Heatmap
         public List<SeatOccupancyDto> GetSeatOccupancyHeatmap(DateTime startDate, DateTime endDate)
         {
-            var heatmap = _ticketRepository.GetAll()
-                // guard all navs used later
-                .Where(t => t.Flight != null
-                            && t.Flight.Aircraft != null
-                            && !string.IsNullOrEmpty(t.SeatNumber)
-                            && t.Flight.DepartureUtc.Date >= startDate.Date
-                            && t.Flight.DepartureUtc.Date <= endDate.Date)
+            var start = startDate.Date;
+            var endEx = endDate.Date.AddDays(1); // end exclusive
+
+            // Flights in range
+            var flights = _flightRepository.GetFlightsByDateRange(start, endEx) ?? Enumerable.Empty<Flight>();
+            var flightsById = flights.ToDictionary(f => f.FlightId, f => f);
+            if (flightsById.Count == 0) return new List<SeatOccupancyDto>();
+
+            // Build FlightId -> AircraftTail map
+            var tailByFlightId = new Dictionary<int, string>();
+            foreach (var f in flights)
+            {
+                string tail = "Unknown";
+                if (f.AircraftId > 0)
+                {
+                    var ac = _aircraftRepository.GetById(f.AircraftId);
+                    if (ac != null && !string.IsNullOrWhiteSpace(ac.TailNumber))
+                        tail = ac.TailNumber;
+                }
+                tailByFlightId[f.FlightId] = tail;
+            }
+
+            // Tickets (all), then keep only those whose FlightId is in range
+            var tickets = _ticketRepository.GetAll() ?? Enumerable.Empty<Ticket>();
+
+            var grouped = tickets
+                .Where(t => t != null
+                            && !string.IsNullOrWhiteSpace(t.SeatNumber)
+                            && tailByFlightId.ContainsKey(t.FlightId)) // ensures flight in date window
                 .GroupBy(t => new
                 {
-                    Tail = t.Flight.Aircraft.TailNumber,  // safe now
-                    Seat = t.SeatNumber                   // safe now
+                    Tail = tailByFlightId[t.FlightId],
+                    Seat = t.SeatNumber!
                 })
                 .Select(g => new SeatOccupancyDto
                 {
-                    AircraftTail = g.Key.Tail ?? "Unknown",
+                    AircraftTail = g.Key.Tail,
                     SeatNumber = g.Key.Seat,
                     TimesOccupied = g.Count()
                 })
-                .OrderByDescending(s => s.TimesOccupied)
+                .OrderByDescending(x => x.TimesOccupied)
+                .ThenBy(x => x.AircraftTail)
+                .ThenBy(x => x.SeatNumber)
                 .ToList();
 
-            return heatmap;
+            return grouped;
         }
 
 
