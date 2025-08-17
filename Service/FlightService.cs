@@ -674,19 +674,76 @@ namespace FlightManagementCompany.Service
         public IEnumerable<string> GetAvailableSeatsForFlight(int flightId)
         {
             var flight = _flightRepository.GetById(flightId);
+            if (flight == null) return Enumerable.Empty<string>();
 
-            if (flight == null || flight.Aircraft == null)
-                return Enumerable.Empty<string>();
+            // Ensure capacity even if Aircraft nav isn't loaded
+            int? capacity = flight.Aircraft?.Capacity;
+            if ((capacity is null or <= 0) && flight.AircraftId > 0)
+            {
+                var ac = _aircraftRepository.GetById(flight.AircraftId);
+                capacity = ac?.Capacity;
+            }
+            if (capacity is null or <= 0) return Enumerable.Empty<string>();
 
-            var seatMap = BuildSeatMap(flight.Aircraft.Capacity);
+            // Build seat map once
+            var seatMap = BuildSeatMap(capacity.Value).ToList();
 
-            var bookedSeats = _ticketRepository.GetAll()
-                .Where(t => t.FlightId == flightId)
-                .Select(t => t.SeatNumber)
+            // Get booked seats for this flight
+            var bookedSet = new HashSet<string>(
+                _ticketRepository.GetAll()
+                    .Where(t => t.FlightId == flightId && !string.IsNullOrWhiteSpace(t.SeatNumber))
+                    .Select(t => NormalizeSeat(t.SeatNumber!)),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+            // Available = all minus booked
+            var available = seatMap
+                .Select(NormalizeSeat)
+                .Where(seat => !bookedSet.Contains(seat))
+                .OrderBy(SeatRow)   // numeric row
+                .ThenBy(SeatSuffix) // letter(s)
                 .ToList();
 
-            return seatMap.Where(seat => !bookedSeats.Contains(seat));
+            return available;
+        }
 
+        // -------------------- Helpers --------------------
+
+        private static string NormalizeSeat(string seat)
+        {
+            // Trim spaces and unify internal spacing (defensive)
+            return seat.Trim();
+        }
+
+        private static int SeatRow(string seat)
+        {
+            // Safe parse of leading digits; non-numeric -> row 0 so they sort first
+            var digits = new string(seat.TakeWhile(char.IsDigit).ToArray());
+            return int.TryParse(digits, out var n) ? n : 0;
+        }
+
+        private static string SeatSuffix(string seat)
+        {
+            // Everything after the leading digits (e.g., "A", "B", maybe "AA" if ever used)
+            return new string(seat.SkipWhile(char.IsDigit).ToArray());
+        }
+
+        private static IEnumerable<string> BuildSeatMap(int capacity)
+        {
+            // 6-across A–F to match your sample tickets ("1A", "1B", ...)
+            const int seatsPerRow = 6;
+            var letters = new[] { 'A', 'B', 'C', 'D', 'E', 'F' };
+
+            int totalRows = (int)Math.Ceiling(capacity / (double)seatsPerRow);
+            for (int row = 1; row <= totalRows; row++)
+            {
+                for (int i = 0; i < seatsPerRow; i++)
+                {
+                    int seatIndex = (row - 1) * seatsPerRow + i + 1;
+                    if (seatIndex > capacity) yield break;
+                    yield return $"{row}{letters[i]}";
+                }
+            }
         }
 
 
@@ -701,54 +758,69 @@ namespace FlightManagementCompany.Service
 
         public List<CrewConflictDto> GetCrewSchedulingConflicts()
         {
-            var flightsWithCrew = _flightRepository.GetAll()
-         .Select(f => new
-         {
-             FlightId = f.FlightId,
-             DepartureUtc = f.DepartureUtc,
-             ArrivalUtc = f.ArrivalUtc,
-             Crew = (f.FlightCrew ?? new List<FlightCrew>())
-                     .Where(fc => fc != null && fc.CrewMember != null)
-                     .Select(fc => new
-                     {
-                         CrewId = fc.CrewMember.CrewId,
-                         FullName = fc.CrewMember.FullName,
-                         LicenseNo = fc.CrewMember.LicenseNo
-                     })
-                     .ToList()
-         })
-         // ignore flights that have no crew after null-safety filtering
-         .Where(f => f.Crew.Count > 0)
-         .ToList();
+            // 1) Load from repos (no nav assumptions)
+            var flights = _flightRepository.GetAll()?.Select(f => new
+            {
+                f.FlightId,
+                f.DepartureUtc,
+                f.ArrivalUtc
+            }).ToList();
 
+            var flightCrews = _flightCrewRepository.GetAll()?.Select(fc => new
+            {
+                fc.FlightId,
+                CrewId = fc.CrewId  
+            }).ToList();
+
+            var crews = _flightCrewMemberRepository.GetAll()?.Select(c => new
+            {
+                CrewId = c.CrewId,
+                c.FullName,
+                c.LicenseNo
+            }).ToList() ;
+
+            // 2) Join to get per-crew assignments with flight times
+            var assignments =
+                from fc in flightCrews
+                join c in crews on fc.CrewId equals c.CrewId
+                join f in flights on fc.FlightId equals f.FlightId
+                select new
+                {
+                    c.CrewId,
+                    c.FullName,
+                    c.LicenseNo,
+                    f.FlightId,
+                    f.DepartureUtc,
+                    f.ArrivalUtc
+                };
+
+            // 3) Group by crew, sort, and detect overlaps
             var conflicts = new List<CrewConflictDto>();
 
-            // Compare flights pairwise (simple and clear). 
-            // If your dates can be nullable, add HasValue checks here.
-            foreach (var a in flightsWithCrew)
+            foreach (var grp in assignments.GroupBy(x => new { x.CrewId, x.FullName, x.LicenseNo }))
             {
-                foreach (var b in flightsWithCrew.Where(f => f.FlightId > a.FlightId))
+                var list = grp
+                    .OrderBy(x => x.DepartureUtc)
+                    .ToList();
+
+                // Compare each flight with later ones until no overlap possible
+                for (int i = 0; i < list.Count; i++)
                 {
-                    bool overlaps = a.DepartureUtc < b.ArrivalUtc &&
-                                    b.DepartureUtc < a.ArrivalUtc;
-
-                    if (!overlaps) continue;
-
-                    var overlappingCrew = a.Crew
-                        .Join(b.Crew, ca => ca.CrewId, cb => cb.CrewId,
-                              (ca, cb) => new { ca.CrewId, ca.FullName })
-                        .ToList();
-
-                    foreach (var c in overlappingCrew)
+                    for (int j = i + 1; j < list.Count; j++)
                     {
+                        bool overlaps = list[i].DepartureUtc < list[j].ArrivalUtc
+                                     && list[j].DepartureUtc < list[i].ArrivalUtc;
+                        if (!overlaps) break; // list is sorted by departure; later flights only get later
+
                         conflicts.Add(new CrewConflictDto
                         {
-                            CrewId = c.CrewId,
-                            CrewName = c.FullName,
-                            FlightAId = a.FlightId,
-                            FlightBId = b.FlightId,
-                            FlightADep = a.DepartureUtc,
-                            FlightBDep = b.DepartureUtc
+                            CrewId = grp.Key.CrewId,
+                            CrewName = grp.Key.FullName ?? "N/A",
+                            CrewLicence = grp.Key.LicenseNo ?? "N/A",
+                            FlightAId = list[i].FlightId,
+                            FlightBId = list[j].FlightId,
+                            FlightADep = list[i].DepartureUtc,
+                            FlightBDep = list[j].DepartureUtc
                         });
                     }
                 }
@@ -756,7 +828,6 @@ namespace FlightManagementCompany.Service
 
             return conflicts;
         }
-
 
         //7. Passengers with Connections
         public List<PassengerConnectionDto> GetPassengersWithConnections(double maxHoursBetween)
@@ -1007,24 +1078,8 @@ Using historical bookings, project expected bookings for next week by simple ave
 
         }
 
-        // -------------------- Helper Function --------------------
-        // ---------------------  seat map ---------------------
-        private static List<string> BuildSeatMap(int capacity)
-        {
-            var seats = new List<string>(capacity);
-            if (capacity <= 0) return seats;
-            const int perRow = 6;
-            int rows = (int)Math.Ceiling(capacity / (double)perRow);
-            for (int r = 1; r <= rows; r++)
-            {
-                for (int s = 0; s < perRow; s++)
-                {
-                    if (seats.Count >= capacity) break;
-                    seats.Add($"{r}{(char)('A' + s)}");
-                }
-            }
-            return seats;
-        }
+       
+      
 
     }
 

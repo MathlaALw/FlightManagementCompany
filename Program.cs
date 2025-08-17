@@ -225,32 +225,58 @@ namespace FlightManagementCompany
                         break;
 
                     case "5":
-                        
-                        // Available seats logic is already implemented above
+
                         Console.WriteLine("Enter the flight ID to check available seats:");
                         int flightId;
-                        string? flightIdInput = Console.ReadLine(); // Allow null input
-                        while (string.IsNullOrEmpty(flightIdInput) || !int.TryParse(flightIdInput, out flightId))
+                        string? flightIdInput = Console.ReadLine();
+                        while (string.IsNullOrWhiteSpace(flightIdInput) || !int.TryParse(flightIdInput, out flightId))
                         {
                             Console.WriteLine("Invalid flight ID. Please enter a valid flight ID:");
                             flightIdInput = Console.ReadLine();
                         }
-                        var availableSeats = flightService.GetAvailableSeatsForFlight(flightId);
-                        if (availableSeats.Any())
+
+                        // Call your service
+                        var seatsEnumerable = flightService.GetAvailableSeatsForFlight(flightId);
+                        if (seatsEnumerable == null)
                         {
-                            Console.WriteLine($"Available seats on flight {flightId}: {string.Join(", ", availableSeats)}");
+                            Console.WriteLine($"Flight with ID {flightId} does not exist.");
+                            return;
                         }
-                        else
+
+                        // Materialize and sort seats: numeric row then seat letter
+                        var seats = seatsEnumerable
+                            .Select(s => s?.Trim())
+                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                            .OrderBy(s => int.Parse(new string(s.TakeWhile(char.IsDigit).ToArray())))
+                            .ThenBy(s => new string(s.SkipWhile(char.IsDigit).ToArray()))
+                            .ToList();
+
+                        // If the service returns an empty sequence, we can’t tell if flight doesn’t exist or no capacity.
+                        // If you exposed a separate flight lookup, use it here to print a more specific message.
+                        if (seats.Count == 0)
                         {
-                            Console.WriteLine($"No available seats found or flight with ID {flightId} does not exist.");
+                            Console.WriteLine($"No available seats found for flight ID {flightId}. (Flight may be full or not found.)");
+                            return;
+                        }
+
+                        Console.WriteLine($"\nAvailable seats on flight {flightId}: {seats.Count}\n");
+
+                        // Print in columns (e.g., 10 per line)
+                        const int perLine = 10;
+                        for (int i = 0; i < seats.Count; i++)
+                        {
+                            Console.Write(seats[i]);
+                            if ((i + 1) % perLine == 0 || i == seats.Count - 1)
+                                Console.WriteLine();
+                            else
+                                Console.Write(", ");
                         }
 
                         break;
 
                         case "6":
                         //Crew Scheduling Conflicts
-                        Console.WriteLine("Crew Scheduling Conflicts");
-                       flightService.GetCrewSchedulingConflicts();
+
                         
                         Console.WriteLine("Crew Scheduling Conflicts:");
                         var conflicts = flightService.GetCrewSchedulingConflicts();

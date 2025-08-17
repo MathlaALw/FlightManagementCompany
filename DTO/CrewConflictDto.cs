@@ -11,7 +11,7 @@ namespace FlightManagementCompany.DTO
     {
         public int CrewId { get; set; }
         public string CrewName { get; set; }
-        public string CrewLicence { get; set; }
+        public string CrewLicence { get; set; } = "";  
         public int FlightAId { get; set; }
         public int FlightBId { get; set; }
         public DateTime FlightADep { get; set; }
