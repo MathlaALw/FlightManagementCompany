@@ -891,26 +891,36 @@ namespace FlightManagementCompany.Service
         //8. Frequent Flyer Stats
         public List<FrequentFlyerDto> GetFrequentFlyerStats(DateTime startDate, DateTime endDate)
         {
-            var stats = _ticketRepository.GetAll() // get all tickets from the repository
-                .Where(t => t.Flight.DepartureUtc.Date >= startDate.Date &&
-                            t.Flight.DepartureUtc.Date <= endDate.Date) // filter tickets by flight date range
-                .GroupBy(t => new // group by PassengerId and FullName
-                {
-                    t.Booking.Passenger.PassengerId, // get Passenger ID
-                    t.Booking.Passenger.FullName // get Passenger Full Name
-                })
-                .Select(g => new FrequentFlyerDto // class to hold frequent flyer statistics
-                {
-                    PassengerId = g.Key.PassengerId, // get Passenger ID -- Key is anonymous type with PassengerId and FullName (grouping key)
-                    PassengerName = g.Key.FullName, // get Passenger Full Name
-                    FlightsTaken = g.Select(t => t.FlightId).Distinct().Count() // Removes duplicates and counts unique flights taken by the passenger
-                                                                                // g itself is an enumeration of all Ticket rows that belong to that passenger for the filtered date range.
-                })
-                .OrderByDescending(f => f.FlightsTaken) // order by number of flights taken descending
-                .ToList(); // execute the query and get the results in a list
+            // Normalize to UTC dates and use half-open range [start, end)
+            var startUtc = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc);
+            var endExclusiveUtc = DateTime.SpecifyKind(endDate.Date.AddDays(1), DateTimeKind.Utc);
 
-            return stats; // return the list of frequent flyer statistics
+            // Prefer IQueryable<Ticket> from repository so the DB does the work.
+            var query = _ticketRepository.GetAll()               // IQueryable<Ticket> recommended
+                //.AsNoTracking()                                  // read-only optimization (EF Core)
+                .Where(t =>
+                    t.Flight != null &&
+                    t.Booking != null &&
+                    t.Booking.Passenger != null &&
+                    t.Flight.DepartureUtc >= startUtc &&
+                    t.Flight.DepartureUtc < endExclusiveUtc)
+                .GroupBy(t => new
+                {
+                    t.Booking.Passenger.PassengerId,
+                    t.Booking.Passenger.FullName
+                })
+                .Select(g => new FrequentFlyerDto
+                {
+                    PassengerId = g.Key.PassengerId,
+                    PassengerName = g.Key.FullName,
+                    FlightsTaken = g.Select(t => t.FlightId).Distinct().Count()
+                })
+                .OrderByDescending(f => f.FlightsTaken)
+                .ThenBy(f => f.PassengerName); // stable order for ties
+
+            return query.ToList();
         }
+
 
 
         // 9. Maintanance Alert
@@ -919,31 +929,53 @@ namespace FlightManagementCompany.Service
             const int maintenanceThresholdDays = 30;
             var thresholdDate = DateTime.UtcNow.AddDays(-maintenanceThresholdDays);
 
-            var alerts = _aircraftRepository.GetAll()
-                .Where(a => a.AircraftMaintenances.Any())
+            // Prefer IQueryable<T> from repository so EF can translate to SQL
+            var alerts = _aircraftRepository.GetAll()            // IQueryable<Aircraft> recommended
+                //.AsNoTracking()                                  // read-only optimization (EF Core)
+                                                                 // Do NOT filter out aircraft with no maintenances — those should be considered "due"
                 .Select(a => new
                 {
                     Aircraft = a,
+                    // Latest maintenance record (if any)
                     LastMaintenance = a.AircraftMaintenances
-                                     .OrderByDescending(m => m.MaintenanceDate)
-                                     .FirstOrDefault(),
-                    LatestFlight = a.Flights.OrderByDescending(f => f.DepartureUtc).FirstOrDefault()
+                                        .OrderByDescending(m => m.MaintenanceDate)
+                                        .FirstOrDefault(),
+                    // Latest flight (if any)
+                    LatestFlight = a.Flights
+                                    .OrderByDescending(f => f.DepartureUtc)
+                                    .FirstOrDefault()
                 })
-                .Select(x => new MaintenanceAlertDto
+                .Select(x =>
                 {
-                    FlightId = x.LatestFlight?.FlightId ?? 0,
-                    FlightNumber = x.LatestFlight?.FlightNumber ?? "N/A",
-                    AircraftTail = x.Aircraft.TailNumber,
-                    LastMaintenanceDate = x.LastMaintenance?.MaintenanceDate ?? DateTime.MinValue,
-                    NextMaintenanceDueDate = (DateTime)(x.LastMaintenance != null? x.LastMaintenance.MaintenanceDate.AddDays(maintenanceThresholdDays): (DateTime?)null),
-                    IsDueForMaintenance = x.LastMaintenance == null ||
-                                         x.LastMaintenance.MaintenanceDate < thresholdDate
+                    DateTime? lastMaint = x.LastMaintenance != null
+                        ? x.LastMaintenance.MaintenanceDate
+                        : (DateTime?)null;
+
+                    DateTime? nextDue = lastMaint?.AddDays(maintenanceThresholdDays);
+
+                    bool isDue = lastMaint == null || lastMaint < thresholdDate;
+
+                    return new MaintenanceAlertDto
+                    {
+                        FlightId = x.LatestFlight != null ? x.LatestFlight.FlightId : 0,
+                        FlightNumber = x.LatestFlight != null ? x.LatestFlight.FlightNumber : "N/A",
+                        AircraftTail = x.Aircraft.TailNumber,
+                        LastMaintenanceDate = (DateTime)lastMaint,
+                        NextMaintenanceDueDate = (DateTime)nextDue,
+                        IsDueForMaintenance = isDue
+                    };
                 })
                 .Where(a => a.IsDueForMaintenance)
+                .OrderBy(a =>
+                {
+                    return a.NextMaintenanceDueDate;
+                }) // earlier due first; "no history" first
+                .ThenBy(a => a.AircraftTail)
                 .ToList();
 
             return alerts;
         }
+
 
 
         //10. Baggage Overweight Alerts
@@ -951,27 +983,34 @@ namespace FlightManagementCompany.Service
 
         public List<BaggageOverweightDto> GetBaggageOverweightAlerts(decimal weightThreshold)
         {
-            var alerts = _ticketRepository.GetAll() // get all tickets from the repository
-                .Select(t => new // transform each ticket into a DTO
+            var alerts = _ticketRepository.GetAll()   
+               
+                .Select(t => new
                 {
-                    TicketId = t.TicketId, // get Ticket ID
-                    PassengerName = t.Booking.Passenger.FullName, // get Passenger Full Name
-                    TotalBaggageWeight = t.Baggages.Sum(b => b.WeightKg) // sum of baggage weights for the ticket
+                    t.TicketId,
+                    PassengerName = t.Booking != null && t.Booking.Passenger != null
+                        ? t.Booking.Passenger.FullName
+                        : "Unknown",
+                    // SUM can return NULL in SQL when no rows; coalesce to 0m.
+                    // If WeightKg is nullable, cast to decimal? before Sum.
+                    TotalBaggageWeight = t.Baggages.Sum(b => (decimal?)b.WeightKg) ?? 0m
                 })
-                .Where(t => t.TotalBaggageWeight > weightThreshold) // filter tickets with total baggage weight exceeding threshold
-                .Select(t => new BaggageOverweightDto // class to hold baggage overweight details
+                .Where(x => x.TotalBaggageWeight > weightThreshold)
+                .OrderByDescending(x => x.TotalBaggageWeight)
+                .Select(x => new BaggageOverweightDto
                 {
-                    TicketId = t.TicketId, // get Ticket ID
-                    PassengerName = t.PassengerName, // get Passenger Full Name
-                    TotalBaggageWeight = (double)t.TotalBaggageWeight // get total baggage weight
+                    TicketId = x.TicketId,
+                    PassengerName = x.PassengerName,
+                    TotalBaggageWeight = (double)x.TotalBaggageWeight
                 })
-                .ToList(); // execute the query and get the results in a list
-            return alerts; // return the list of baggage overweight alerts
+                .ToList();
+
+            return alerts;
         }
 
 
 
-        
+
         // 11. Complex Set/Partitioning Examples
         //public List<PassengerDto> GetCombinedPassengerList()
         //{

@@ -323,6 +323,109 @@ namespace FlightManagementCompany
                         }
                         break;
 
+                    case "8":
+                        // Frequent Fliers
+                        //Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");
+                        //DateTime frequentFliersStartDate;
+                        //while (!DateTime.TryParseExact(Console.ReadLine(),
+                        //                               "yyyy-MM-dd",
+                        //                               CultureInfo.InvariantCulture,
+                        //                               DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                        //                               out frequentFliersStartDate))
+                        //{
+                        //    Console.WriteLine("Invalid format. Please enter Start Date as yyyy-MM-dd:");
+                        //}
+
+                        //Console.WriteLine("Enter the End Date (yyyy-MM-dd):");
+                        //DateTime frequentFliersEndDate;
+                        //while (!DateTime.TryParse(DateTime.Parse(Console.ReadLine()),
+                        //                               out frequentFliersEndDate) || frequentFliersEndDate < frequentFliersStartDate)
+                        //    Console.WriteLine(frequentFliersEndDate < frequentFliersStartDate
+                        //        ? "End date must be after start date. Enter End Date (yyyy-MM-dd):"
+                        //        : "Invalid format. Please enter End Date as yyyy-MM-dd:");
+                        //}
+                        Console.WriteLine("Enter the Start Date (yyyy-MM-dd):");
+                        string? frequentFliersStartDateInput = Console.ReadLine();
+                        DateTime frequentFliersStartDate;
+                        while (!DateTime.TryParse(frequentFliersStartDateInput, out frequentFliersStartDate))
+                        {
+                            Console.WriteLine("Invalid date format. Please enter a valid start date (yyyy-MM-dd):");
+                            frequentFliersStartDateInput = Console.ReadLine();
+                        }
+                        Console.WriteLine("Enter the End Date (yyyy-MM-dd):");
+                        string? frequentFliersEndDateInput = Console.ReadLine();
+                        DateTime frequentFliersEndDate;
+
+                        while (!DateTime.TryParse(frequentFliersEndDateInput, out frequentFliersEndDate) || frequentFliersEndDate < frequentFliersStartDate)
+                        {
+                            Console.WriteLine(frequentFliersEndDate < frequentFliersStartDate
+                                ? "End date must be after start date. Please enter a valid end date (yyyy-MM-dd):"
+                                : "Invalid date format. Please enter a valid end date (yyyy-MM-dd):");
+                            frequentFliersEndDateInput = Console.ReadLine();
+                        }
+
+                        var frequentFliers = flightService.GetFrequentFlyerStats(frequentFliersStartDate, frequentFliersEndDate);
+
+                        if (frequentFliers.Any())
+                        {
+                            Console.WriteLine("Frequent Fliers:");
+                            foreach (var flier in frequentFliers)
+                            {
+                                Console.WriteLine($"Passenger ID: {flier.PassengerId}, Name: {flier.PassengerName}, Flights Taken: {flier.FlightsTaken}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No frequent fliers found for the specified date range.");
+                        }
+                        break;
+
+                    case "9":
+                        // Maintenance Alert
+                        Console.WriteLine("Maintenance Alert:");
+                        var maintenanceAlerts = flightService.GetMaintenanceAlerts();
+                        if (maintenanceAlerts.Any())
+                        {
+                            foreach (var alert in maintenanceAlerts)
+                            {
+                                Console.WriteLine($"Aircraft Tail: {alert.AircraftTail}, Alert: {alert.IsDueForMaintenance}, Last Maintenance: {alert.LastMaintenanceDate:yyyy-MM-dd}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No maintenance alerts found.");
+                        }
+                        break;
+
+                        case "10":
+                        // Baggage Overweight Alerts
+                        Console.WriteLine("Enter baggage weight threshold (kg):");
+                        if (decimal.TryParse(Console.ReadLine(), out decimal threshold))
+                        {
+                            var overweightAlerts = flightService.GetBaggageOverweightAlerts(threshold);
+
+                            if (overweightAlerts.Any())
+                            {
+                                Console.WriteLine("Overweight Baggage Alerts:");
+                                foreach (var alert in overweightAlerts)
+                                {
+                                    Console.WriteLine(
+                                        $"Ticket ID: {alert.TicketId}, " +
+                                        $"Passenger: {alert.PassengerName}, " +
+                                        $"Total Weight: {alert.TotalBaggageWeight} kg"
+                                    );
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("No overweight baggage found.");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Invalid number entered.");
+                        }
+                        break;
                     case "0":
                         return; // Exit the application
                     default:
