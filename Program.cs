@@ -426,6 +426,23 @@ namespace FlightManagementCompany
                             Console.WriteLine("Invalid number entered.");
                         }
                         break;
+                    case "11":
+                        break;
+                    case "12":
+                        // Conversion Operators Demonstration
+                        Console.WriteLine("Conversion Operators Demonstration:");
+                        Console.WriteLine("Enter a string to convert to an integer:");
+                        string? intInput = Console.ReadLine();
+                        if (int.TryParse(intInput, out int intValue))
+                        {
+                            Console.WriteLine($"Converted value: {intValue}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Invalid input. Could not convert to integer.");
+                        }
+
+                        break;
                     case "0":
                         return; // Exit the application
                     default:
